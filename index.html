@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Cloud Launchpad</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; -webkit-font-smoothing: antialiased; }
+        .glass-card { background: rgba(255, 255, 255, 0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.5); transition: all 0.3s ease; }
+        .glass-card:hover { transform: translateY(-4px); background: white; box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.05); }
+        .icon-box { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 16px; background: #f1f5f9; color: #64748b; }
+    </style>
+</head>
+<body class="p-8 md:p-20">
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-16 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-semibold tracking-tight">Nexus Cloud</h1>
+                <p id="syncStatus" class="text-emerald-500 text-[10px] uppercase tracking-widest font-bold mt-1">Syncing...</p>
+            </div>
+            <button onclick="toggleModal('add')" class="bg-black text-white px-6 py-2.5 rounded-full text-xs font-medium hover:bg-slate-800 transition">Add Shortcut</button>
+        </header>
+
+        <div id="launcherGrid" class="grid grid-cols-2 md:grid-cols-4 gap-8"></div>
+    </div>
+
+    <div id="modal" class="hidden fixed inset-0 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-[2.5rem] p-10 w-full max-w-md shadow-2xl">
+            <h2 id="modalTitle" class="text-xl font-semibold mb-8">Shortcut Details</h2>
+            <input type="hidden" id="editId">
+            <div class="space-y-6">
+                <input type="text" id="nameInput" placeholder="Name" class="w-full border-b pb-2 outline-none focus:border-emerald-500 text-lg">
+                <input type="text" id="urlInput" placeholder="Filename or URL" class="w-full border-b pb-2 outline-none focus:border-emerald-500 text-lg">
+            </div>
+            <div class="flex gap-4 mt-10">
+                <button onclick="saveShortcut()" class="flex-1 bg-black text-white py-4 rounded-2xl text-sm font-semibold">Save</button>
+                <button onclick="toggleModal()" class="flex-1 bg-slate-50 text-slate-500 py-4 rounded-2xl text-sm font-semibold">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'YOUR_URL';
+        const SUPABASE_KEY = 'YOUR_KEY';
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        async function fetchShortcuts() {
+            const { data, error } = await supabaseClient.from('shortcuts').select('*').order('order', { ascending: true });
+            if (!error) {
+                renderShortcuts(data);
+                document.getElementById('syncStatus').innerText = 'Cloud Synced';
+            }
+        }
+
+        async function saveShortcut() {
+            const id = document.getElementById('editId').value;
+            const name = document.getElementById('nameInput').value.trim();
+            const url = document.getElementById('urlInput').value.trim();
+            if (!name || !url) return;
+
+            const entry = { name, url, order: Date.now() };
+            if (id) await supabaseClient.from('shortcuts').update(entry).eq('id', id);
+            else await supabaseClient.from('shortcuts').insert([entry]);
+
+            toggleModal();
+            fetchShortcuts();
+        }
+
+        async function deleteShortcut(id, e) {
+            e.stopPropagation();
+            if(!confirm("Delete?")) return;
+            await supabaseClient.from('shortcuts').delete().eq('id', id);
+            fetchShortcuts();
+        }
+
+        function renderShortcuts(list) {
+            const container = document.getElementById('launcherGrid');
+            container.innerHTML = list.map(item => `
+                <div class="glass-card p-10 rounded-[3rem] flex flex-col items-center text-center group relative cursor-pointer" onclick="window.open('${item.url}', '_blank')">
+                    <div class="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <button onclick="event.stopPropagation(); toggleModal('edit', '${item.id}', '${item.name}', '${item.url}')" class="text-slate-300 hover:text-blue-500"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                        <button onclick="deleteShortcut('${item.id}', event)" class="text-slate-300 hover:text-red-400"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    <div class="icon-box mb-6 group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-all">
+                        <i data-lucide="${item.url.includes('http') ? 'globe' : 'layout'}" class="w-7 h-7"></i>
+                    </div>
+                    <span class="text-sm font-bold text-slate-700">${item.name}</span>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function toggleModal(mode = 'add', id = null, name = '', url = '') {
+            document.getElementById('modal').classList.toggle('hidden');
+            document.getElementById('editId').value = id;
+            document.getElementById('nameInput').value = name;
+            document.getElementById('urlInput').value = url;
+        }
+
+        fetchShortcuts();
+    </script>
+</body>
+</html>

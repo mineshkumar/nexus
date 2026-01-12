@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Habit Flow Cloud</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #fafafa; }
+        .days-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; }
+        .cell-check { width: 24px; height: 24px; border-radius: 4px; background: #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; color: #94a3b8; }
+        .cell-check.active { background: #10b981; color: #ffffff; }
+    </style>
+</head>
+<body class="p-8 flex flex-col items-center">
+    <div class="w-full max-w-2xl">
+        <header class="mb-12 flex justify-between items-end">
+            <h1 class="text-lg font-medium text-gray-400 uppercase tracking-widest">CLOUD / <span class="text-black">HABITS</span></h1>
+            <span id="status" class="text-[10px] uppercase font-bold text-emerald-600">Syncing...</span>
+        </header>
+
+        <section class="mb-16 flex gap-4">
+            <input type="text" id="habitInput" placeholder="New habit..." class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light">
+            <button onclick="addHabit()" class="text-emerald-600"><i data-lucide="plus-circle" class="w-7 h-7"></i></button>
+        </section>
+
+        <div id="habitContainer" class="space-y-12"></div>
+    </div>
+
+    <script>
+        const supabaseClient = supabase.createClient('https://iqlndhxlkjmqavpllhcl.supabase.co', 'sb_secret_9vNChDlrDinQK4_J0MKz2w_3LIJTXfr');
+
+        async function fetchHabits() {
+            const { data, error } = await supabaseClient.from('habits').select('*').order('order', { ascending: true });
+            if (!error) renderHabits(data);
+            document.getElementById('status').innerText = 'Synced';
+        }
+
+        async function addHabit() {
+            const name = document.getElementById('habitInput').value;
+            if (!name) return;
+            await supabaseClient.from('habits').insert([{ name, completions: [], order: Date.now() }]);
+            document.getElementById('habitInput').value = '';
+            fetchHabits();
+        }
+
+        async function toggleDay(habitId, dayIndex, currentCompletions) {
+            let newCompletions = [...currentCompletions];
+            const idx = newCompletions.indexOf(dayIndex);
+            if (idx > -1) newCompletions.splice(idx, 1);
+            else newCompletions.push(dayIndex);
+
+            await supabaseClient.from('habits').update({ completions: newCompletions }).eq('id', habitId);
+            fetchHabits();
+        }
+
+        function renderHabits(habits) {
+            const container = document.getElementById('habitContainer');
+            container.innerHTML = habits.map(habit => {
+                let gridHTML = '<div class="days-grid">';
+                for (let i = 0; i < 60; i++) {
+                    const isDone = habit.completions.includes(i);
+                    gridHTML += `<div class="cell-check ${isDone ? 'active' : ''}" onclick="toggleDay('${habit.id}', ${i}, [${habit.completions}])">${i + 1}</div>`;
+                }
+                return `<div class="group">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-xs font-bold text-gray-700 uppercase tracking-widest">${habit.name}</h3>
+                        <button onclick="deleteHabit('${habit.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                    </div>
+                    ${gridHTML}</div>`;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        async function deleteHabit(id) {
+            if(!confirm("Delete?")) return;
+            await supabaseClient.from('habits').delete().eq('id', id);
+            fetchHabits();
+        }
+
+        fetchHabits();
+    </script>
+</body>
+</html>
