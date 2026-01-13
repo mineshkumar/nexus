@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,34 +9,74 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #fafafa; }
-        .days-grid { display: grid; grid-template-columns: repeat(20, 1fr); gap: 6px; }
-        .cell-check { width: 24px; height: 24px; border-radius: 4px; background: #f1f5f9; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 500; color: #94a3b8; }
-        .cell-check.active { background: #10b981; color: #ffffff; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #fafafa;
+        }
+
+        .days-grid {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 6px;
+        }
+
+        .cell-check {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            background: #f1f5f9;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 500;
+            color: #94a3b8;
+        }
+
+        .cell-check.active {
+            background: #10b981;
+            color: #ffffff;
+        }
     </style>
 </head>
+
 <body class="p-8 flex flex-col items-center">
     <div class="w-full max-w-2xl">
         <header class="mb-12 flex justify-between items-end">
-            <h1 class="text-lg font-medium text-gray-400 uppercase tracking-widest">CLOUD / <span class="text-black">HABITS</span></h1>
+            <h1 class="text-lg font-medium text-gray-400 uppercase tracking-widest">CLOUD / <span
+                    class="text-black">HABITS</span></h1>
             <span id="status" class="text-[10px] uppercase font-bold text-emerald-600">Syncing...</span>
         </header>
 
         <section class="mb-16 flex gap-4">
-            <input type="text" id="habitInput" placeholder="New habit..." class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light">
-            <button onclick="addHabit()" class="text-emerald-600"><i data-lucide="plus-circle" class="w-7 h-7"></i></button>
+            <input type="text" id="habitInput" placeholder="New habit..."
+                class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light">
+            <button onclick="addHabit()" class="text-emerald-600"><i data-lucide="plus-circle"
+                    class="w-7 h-7"></i></button>
         </section>
 
         <div id="habitContainer" class="space-y-12"></div>
     </div>
 
     <script>
-        const supabaseClient = supabase.createClient('https://iqlndhxlkjmqavpllhcl.supabase.co', 'sb_secret_9vNChDlrDinQK4_J0MKz2w_3LIJTXfr');
+        const supabaseClient = supabase.createClient('https://iqlndhxlkjmqavpllhcl.supabase.co', 'sb_publishable_sE922DO0e6S-O-K4s0c9yg_o_5p95Ji');
 
         async function fetchHabits() {
             const { data, error } = await supabaseClient.from('habits').select('*').order('order', { ascending: true });
-            if (!error) renderHabits(data);
-            document.getElementById('status').innerText = 'Synced';
+            const statusEl = document.getElementById('status');
+
+            if (error) {
+                console.error('Supabase error:', error);
+                statusEl.innerText = 'Sync Error';
+                statusEl.classList.remove('text-emerald-600');
+                statusEl.classList.add('text-red-500');
+            } else {
+                renderHabits(data);
+                statusEl.innerText = 'Synced';
+                statusEl.classList.add('text-emerald-600');
+                statusEl.classList.remove('text-red-500');
+            }
         }
 
         async function addHabit() {
@@ -75,7 +116,7 @@
         }
 
         async function deleteHabit(id) {
-            if(!confirm("Delete?")) return;
+            if (!confirm("Delete?")) return;
             await supabaseClient.from('habits').delete().eq('id', id);
             fetchHabits();
         }
@@ -83,4 +124,5 @@
         fetchHabits();
     </script>
 </body>
+
 </html>
