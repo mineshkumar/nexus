@@ -106,9 +106,22 @@
                 .select('*')
                 .order('order', { ascending: true });
 
-            if (error) {
-                console.error(error);
-                document.getElementById('syncStatus').innerText = 'Sync Error';
+            const defaultApps = [
+                { id: 'default-1', name: 'Intent Logger', url: 'intent_logger.html' },
+                { id: 'default-2', name: 'Habit Tracker', url: 'habit_tracker.html' }
+            ];
+
+            if (error || !data || data.length === 0) {
+                console.warn('Using default shortcuts due to error or empty data:', error);
+                renderShortcuts(defaultApps);
+                // If it's a real error, show Sync Error. If just empty, maybe show "Local Mode"?
+                // User sees "Sync Error" currently due to missing table.
+                // We'll keep the status as Sync Error if it's an error, but at least show apps.
+                if (error) {
+                    document.getElementById('syncStatus').innerText = 'Sync Error (Defaults Loaded)';
+                } else {
+                    document.getElementById('syncStatus').innerText = 'Cloud Synced';
+                }
             } else {
                 renderShortcuts(data);
                 document.getElementById('syncStatus').innerText = 'Cloud Synced';
