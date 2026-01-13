@@ -6,6 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Habit Flow Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -32,26 +49,53 @@
             font-size: 9px;
             font-weight: 500;
             color: #94a3b8;
+            transition: all 0.2s;
+        }
+
+        .dark .cell-check {
+            background: #262626;
+            color: #525252;
         }
 
         .cell-check.active {
             background: #10b981;
             color: #ffffff;
         }
+
+        .dark .cell-check.active {
+            background: #059669;
+            color: #ffffff;
+        }
+
+        .cell-check:hover:not(.active) {
+            background: #e2e8f0;
+        }
+
+        .dark .cell-check:hover:not(.active) {
+            background: #333;
+        }
     </style>
 </head>
 
-<body class="p-8 flex flex-col items-center">
+<body
+    class="p-8 flex flex-col items-center bg-white text-slate-800 dark:bg-neutral-950 dark:text-neutral-200 transition-colors duration-300">
     <div class="w-full max-w-2xl">
         <header class="mb-12 flex justify-between items-end">
-            <h1 class="text-lg font-medium text-gray-400 uppercase tracking-widest">CLOUD / <span
-                    class="text-black">HABITS</span></h1>
-            <span id="status" class="text-[10px] uppercase font-bold text-emerald-600">Syncing...</span>
+            <h1 class="text-lg font-medium text-gray-400 uppercase tracking-widest dark:text-neutral-500">CLOUD / <span
+                    class="text-black dark:text-white">HABITS</span></h1>
+            <div class="flex items-center gap-4">
+                <span id="status" class="text-[10px] uppercase font-bold text-emerald-600">Syncing...</span>
+                <button onclick="toggleTheme()"
+                    class="bg-gray-100 dark:bg-neutral-900 text-gray-500 hover:text-black dark:hover:text-white p-2 rounded-full border border-gray-200 dark:border-neutral-800 transition">
+                    <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+                    <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
+                </button>
+            </div>
         </header>
 
         <section class="mb-16 flex gap-4">
             <input type="text" id="habitInput" placeholder="New habit..."
-                class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light">
+                class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light dark:border-neutral-800 dark:focus:border-emerald-500">
             <button onclick="addHabit()" class="text-emerald-600"><i data-lucide="plus-circle"
                     class="w-7 h-7"></i></button>
         </section>
@@ -122,6 +166,16 @@
         }
 
         fetchHabits();
+
+        function toggleTheme() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+            }
+        }
     </script>
 </body>
 
