@@ -95,7 +95,8 @@
 
         <section class="mb-16 flex gap-4">
             <input type="text" id="habitInput" placeholder="New habit..."
-                class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light dark:border-neutral-800 dark:focus:border-emerald-500">
+                class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light dark:border-neutral-800 dark:focus:border-emerald-500"
+                onkeypress="if(event.key === 'Enter') addHabit()">
             <button onclick="addHabit()" class="text-emerald-600"><i data-lucide="plus-circle"
                     class="w-7 h-7"></i></button>
         </section>
@@ -112,11 +113,14 @@
 
             if (error) {
                 console.error('Supabase error:', error);
+                console.error('Error details:', error.message, error.details, error.hint);
                 statusEl.innerText = 'Sync Error';
                 statusEl.classList.remove('text-emerald-600');
                 statusEl.classList.add('text-red-500');
+                // Render empty state on error
+                renderHabits([]);
             } else {
-                renderHabits(data);
+                renderHabits(data || []);
                 statusEl.innerText = 'Synced';
                 statusEl.classList.add('text-emerald-600');
                 statusEl.classList.remove('text-red-500');
@@ -126,7 +130,7 @@
         async function addHabit() {
             const name = document.getElementById('habitInput').value;
             if (!name) return;
-            await supabaseClient.from('habits').insert([{ name, completions: [], order: Date.now() }]);
+            await supabaseClient.from('habits').insert([{ name, completions: [], order: Math.floor(Date.now() / 1000) }]);
             document.getElementById('habitInput').value = '';
             fetchHabits();
         }

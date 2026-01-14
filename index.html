@@ -115,11 +115,13 @@
 
             <label class="metadata-text block mb-1 ml-1">Display Name</label>
             <input type="text" id="nameInput" placeholder="e.g. Habit Tracker"
-                class="w-full border-b mb-6 p-2 outline-none focus:border-black dark:bg-transparent dark:border-slate-700 dark:focus:border-white">
+                class="w-full border-b mb-6 p-2 outline-none focus:border-black dark:bg-transparent dark:border-slate-700 dark:focus:border-white"
+                onkeypress="if(event.key === 'Enter') saveShortcut()">
 
             <label class="metadata-text block mb-1 ml-1">Filename or URL</label>
             <input type="text" id="urlInput" placeholder="e.g. habit_tracker.html"
-                class="w-full border-b mb-8 p-2 outline-none focus:border-black dark:bg-transparent dark:border-slate-700 dark:focus:border-white">
+                class="w-full border-b mb-8 p-2 outline-none focus:border-black dark:bg-transparent dark:border-slate-700 dark:focus:border-white"
+                onkeypress="if(event.key === 'Enter') saveShortcut()">
 
             <div class="flex gap-3">
                 <button onclick="saveShortcut()"
@@ -171,7 +173,7 @@
             const url = document.getElementById('urlInput').value.trim();
             if (!name || !url) return;
 
-            const entry = { name, url, order: Date.now() };
+            const entry = { name, url, order: Math.floor(Date.now() / 1000) };
 
             if (id && id !== "null") {
                 await supabaseClient.from('shortcuts').update(entry).eq('id', id);

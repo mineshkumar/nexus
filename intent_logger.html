@@ -70,10 +70,12 @@
 
         <section class="glass p-6 rounded-3xl shadow-sm mb-10 border border-gray-100 dark:border-neutral-900">
             <input type="text" id="intentInput" placeholder="Enter your intent..."
-                class="w-full bg-transparent text-xl outline-none border-b border-gray-100 pb-3 focus:border-black dark:border-neutral-800 dark:focus:border-white transition-all">
+                class="w-full bg-transparent text-xl outline-none border-b border-gray-100 pb-3 focus:border-black dark:border-neutral-800 dark:focus:border-white transition-all"
+                onkeypress="if(event.key === 'Enter') saveIntent()">
             <div class="flex justify-between items-center mt-4">
                 <input type="text" id="tagInput" placeholder="#Tag"
-                    class="bg-transparent text-xs outline-none text-gray-400">
+                    class="bg-transparent text-xs outline-none text-gray-400"
+                    onkeypress="if(event.key === 'Enter') saveIntent()">
                 <button onclick="saveIntent()"
                     class="bg-black text-white px-5 py-2 rounded-full text-xs font-medium hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition">Log
                     Intent</button>
