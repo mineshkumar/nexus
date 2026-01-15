@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Nexus Intent Logger</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -216,7 +217,8 @@
             </button>
         </div>
 
-        <select id="noteType" class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
+        <select id="noteType"
+            class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
             <option value="bug">🐛 Bug</option>
             <option value="feature">✨ Feature</option>
             <option value="note">📝 Note</option>
@@ -245,7 +247,7 @@ Supports:
 
     <script>
         // Environment-based configuration
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 
         const SUPABASE_CONFIG = isLocalhost ? {
             url: 'https://jatwmjrybucdpttbigoi.supabase.co',
@@ -373,7 +375,7 @@ Supports:
         }
 
         async function fetchDevNotes() {
-            const { data, error} = await supabaseClient
+            const { data, error } = await supabaseClient
                 .from('dev_notes')
                 .select('*')
                 .order('timestamp', { ascending: false });

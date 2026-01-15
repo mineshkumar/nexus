@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 // Environment-based configuration
-const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 
 const SUPABASE_CONFIG = isLocalhost ? {
   url: 'https://jatwmjrybucdpttbigoi.supabase.co',

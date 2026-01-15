@@ -7,7 +7,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Habit Flow Cloud</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -336,7 +337,8 @@
                 <span class="text-gray-900 dark:text-white">Habits</span>
             </h1>
             <div class="flex items-center gap-3">
-                <span id="status" class="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-500">Syncing...</span>
+                <span id="status"
+                    class="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-500">Syncing...</span>
                 <button onclick="toggleTheme()"
                     class="bg-gray-100 dark:bg-neutral-900 text-gray-500 hover:text-black dark:hover:text-white p-2.5 rounded-full border border-gray-200 dark:border-neutral-800 transition active:scale-95">
                     <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
@@ -392,7 +394,8 @@
             </button>
         </div>
 
-        <select id="noteType" class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
+        <select id="noteType"
+            class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
             <option value="bug">🐛 Bug</option>
             <option value="feature">✨ Feature</option>
             <option value="note">📝 Note</option>
@@ -421,7 +424,7 @@ Supports:
 
     <script>
         // Environment-based configuration
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
 
         const SUPABASE_CONFIG = isLocalhost ? {
             url: 'https://jatwmjrybucdpttbigoi.supabase.co',
@@ -495,7 +498,7 @@ Supports:
                 handle: '.drag-handle',
                 ghostClass: 'sortable-ghost',
                 dragClass: 'sortable-drag',
-                onEnd: async function(evt) {
+                onEnd: async function (evt) {
                     const cards = document.querySelectorAll('.habit-card');
                     for (let i = 0; i < cards.length; i++) {
                         const id = cards[i].getAttribute('data-habit-id');
