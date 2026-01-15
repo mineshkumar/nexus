@@ -3,8 +3,11 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>Habit Flow Cloud</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -25,87 +28,417 @@
     </script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background: #fafafa;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
 
+        .dark body {
+            background: #0a0a0a;
+        }
+
+        /* Mobile-first grid: 10 columns on mobile, 15 on tablet, 20 on desktop */
         .days-grid {
             display: grid;
-            grid-template-columns: repeat(20, 1fr);
-            gap: 6px;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 4px;
         }
 
+        @media (min-width: 480px) {
+            .days-grid {
+                grid-template-columns: repeat(12, 1fr);
+                gap: 5px;
+            }
+        }
+
+        @media (min-width: 640px) {
+            .days-grid {
+                grid-template-columns: repeat(15, 1fr);
+                gap: 5px;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .days-grid {
+                grid-template-columns: repeat(20, 1fr);
+                gap: 6px;
+            }
+        }
+
+        /* Touch-friendly cells: minimum 44px tap target on mobile */
         .cell-check {
-            width: 24px;
-            height: 24px;
-            border-radius: 4px;
-            background: #f1f5f9;
+            width: 100%;
+            aspect-ratio: 1;
+            min-height: 28px;
+            border-radius: 6px;
+            background: #e8edf2;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 9px;
-            font-weight: 500;
-            color: #94a3b8;
-            transition: all 0.2s;
+            font-size: 10px;
+            font-weight: 600;
+            color: #9ca3af;
+            transition: transform 0.15s ease, background 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
         }
 
+        @media (min-width: 640px) {
+            .cell-check {
+                font-size: 9px;
+                border-radius: 5px;
+            }
+        }
+
+        /* Softer colors for reduced eye strain */
         .dark .cell-check {
-            background: #262626;
-            color: #525252;
+            background: #1f1f1f;
+            color: #4a4a4a;
         }
 
         .cell-check.active {
-            background: #10b981;
+            background: #34d399;
             color: #ffffff;
         }
 
         .dark .cell-check.active {
-            background: #059669;
+            background: #10b981;
             color: #ffffff;
         }
 
-        .cell-check:hover:not(.active) {
-            background: #e2e8f0;
+        /* Touch feedback instead of hover on mobile */
+        .cell-check:active {
+            transform: scale(0.92);
         }
 
-        .dark .cell-check:hover:not(.active) {
-            background: #333;
+        @media (hover: hover) {
+            .cell-check:hover:not(.active) {
+                background: #dce4eb;
+            }
+
+            .dark .cell-check:hover:not(.active) {
+                background: #2a2a2a;
+            }
+        }
+
+        /* Habit card styles - softer shadows, better spacing */
+        .habit-card {
+            padding: 16px;
+            background: white;
+            border-radius: 14px;
+            border: 1px solid #eef2f6;
+            transition: all 0.2s ease;
+        }
+
+        @media (min-width: 640px) {
+            .habit-card {
+                padding: 20px;
+                border-radius: 16px;
+            }
+        }
+
+        .dark .habit-card {
+            background: #141414;
+            border-color: #1f1f1f;
+        }
+
+        @media (hover: hover) {
+            .habit-card:hover {
+                border-color: #e2e8f0;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+            }
+
+            .dark .habit-card:hover {
+                border-color: #262626;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            }
+        }
+
+        /* Drag handle - always visible on mobile for touch drag */
+        .drag-handle {
+            cursor: grab;
+            opacity: 0.3;
+            transition: opacity 0.2s;
+            padding: 8px;
+            margin: -8px;
+        }
+
+        @media (hover: hover) {
+            .drag-handle {
+                opacity: 0;
+            }
+
+            .habit-card:hover .drag-handle {
+                opacity: 0.5;
+            }
+
+            .drag-handle:hover {
+                opacity: 1 !important;
+            }
+        }
+
+        .habit-card.sortable-ghost {
+            opacity: 0.4;
+            background: #f8fafc;
+        }
+
+        .dark .habit-card.sortable-ghost {
+            background: #1a1a1a;
+        }
+
+        .habit-card.sortable-drag {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Tooltip - only show on devices with hover (desktop) */
+        .cell-check {
+            position: relative;
+        }
+
+        @media (hover: hover) {
+            .cell-check::after {
+                content: attr(data-tooltip);
+                position: absolute;
+                bottom: calc(100% + 8px);
+                left: 50%;
+                transform: translateX(-50%);
+                background: #1f2937;
+                color: white;
+                padding: 6px 10px;
+                border-radius: 6px;
+                font-size: 11px;
+                white-space: nowrap;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.2s;
+                z-index: 10;
+            }
+
+            .cell-check:hover::after {
+                opacity: 1;
+            }
+
+            .dark .cell-check::after {
+                background: #374151;
+            }
+        }
+
+        /* Safe area padding for notched iPhones */
+        @supports (padding: max(0px)) {
+            body {
+                padding-left: max(16px, env(safe-area-inset-left));
+                padding-right: max(16px, env(safe-area-inset-right));
+                padding-bottom: max(16px, env(safe-area-inset-bottom));
+            }
+        }
+
+        /* Dev Notes Styles */
+        .dev-notes-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .dev-notes-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6);
+        }
+
+        .dev-notes-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dark .dev-notes-panel {
+            background: #171717;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .dev-notes-panel.open {
+            right: 0;
+        }
+
+        .dev-note-item {
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s;
+        }
+
+        .dark .dev-note-item {
+            border-bottom: 1px solid #262626;
+        }
+
+        .dev-note-item:hover {
+            background: #f8fafc;
+        }
+
+        .dark .dev-note-item:hover {
+            background: #262626;
+        }
+
+        .dev-notes-modal {
+            position: fixed;
+            top: 0;
+            right: -600px;
+            width: 600px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
+            transition: right 0.3s ease;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .dark .dev-notes-modal {
+            background: #171717;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .dev-notes-modal.open {
+            right: 0;
+        }
+
+        .dev-note-content {
+            white-space: pre-wrap;
+            word-break: break-word;
         }
     </style>
 </head>
 
 <body
-    class="p-8 flex flex-col items-center bg-white text-slate-800 dark:bg-neutral-950 dark:text-neutral-200 transition-colors duration-300">
+    class="px-4 py-6 sm:p-8 flex flex-col items-center bg-white text-slate-800 dark:bg-[#0a0a0a] dark:text-neutral-200 transition-colors duration-300 min-h-screen">
     <div class="w-full max-w-2xl">
-        <header class="mb-12 flex justify-between items-end">
-            <h1 class="text-lg font-medium text-gray-400 uppercase tracking-widest dark:text-neutral-500">CLOUD / <span
-                    class="text-black dark:text-white">HABITS</span></h1>
-            <div class="flex items-center gap-4">
-                <span id="status" class="text-[10px] uppercase font-bold text-emerald-600">Syncing...</span>
+        <header class="mb-8 sm:mb-12 flex justify-between items-center">
+            <h1 class="text-base sm:text-lg font-medium text-gray-400 uppercase tracking-widest dark:text-neutral-500">
+                <span class="text-gray-900 dark:text-white">Habits</span>
+            </h1>
+            <div class="flex items-center gap-3">
+                <span id="status" class="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-500">Syncing...</span>
                 <button onclick="toggleTheme()"
-                    class="bg-gray-100 dark:bg-neutral-900 text-gray-500 hover:text-black dark:hover:text-white p-2 rounded-full border border-gray-200 dark:border-neutral-800 transition">
+                    class="bg-gray-100 dark:bg-neutral-900 text-gray-500 hover:text-black dark:hover:text-white p-2.5 rounded-full border border-gray-200 dark:border-neutral-800 transition active:scale-95">
                     <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
                     <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
                 </button>
             </div>
         </header>
 
-        <section class="mb-16 flex gap-4">
+        <section class="mb-8 sm:mb-12 flex gap-3">
             <input type="text" id="habitInput" placeholder="New habit..."
-                class="flex-1 bg-transparent text-xl outline-none border-b border-gray-100 pb-2 focus:border-emerald-500 font-light dark:border-neutral-800 dark:focus:border-emerald-500"
+                class="flex-1 bg-transparent text-lg sm:text-xl outline-none border-b border-gray-200 pb-2 focus:border-emerald-500 font-light dark:border-neutral-800 dark:focus:border-emerald-500"
                 onkeypress="if(event.key === 'Enter') addHabit()">
-            <button onclick="addHabit()" class="text-emerald-600"><i data-lucide="plus-circle"
-                    class="w-7 h-7"></i></button>
+            <button onclick="addHabit()" class="text-emerald-500 active:scale-95 transition p-1">
+                <i data-lucide="plus-circle" class="w-7 h-7"></i>
+            </button>
         </section>
 
-        <div id="habitContainer" class="space-y-12"></div>
+        <div id="habitContainer" class="space-y-3 sm:space-y-4"></div>
+    </div>
+
+    <!-- Dev Notes (only visible in localhost) -->
+    <button id="devNotesBtn" class="dev-notes-btn" onclick="toggleDevNotes()" style="display: none;">
+        <i data-lucide="clipboard" class="w-6 h-6"></i>
+    </button>
+
+    <div id="devNotesPanel" class="dev-notes-panel">
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-800">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Dev Notes</h2>
+                <button onclick="toggleDevNotes()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <button onclick="openDevNoteModal()"
+                class="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition mb-2">
+                + New Note
+            </button>
+            <button onclick="copyAllNotes()"
+                class="w-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-xs font-medium transition">
+                📋 Copy All for Claude
+            </button>
+        </div>
+        <div id="devNotesContainer" class="flex-1 overflow-y-auto"></div>
+    </div>
+
+    <!-- Dev Notes Modal -->
+    <div id="devNotesModal" class="dev-notes-modal">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Add Dev Note</h3>
+            <button onclick="closeDevNoteModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <select id="noteType" class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
+            <option value="bug">🐛 Bug</option>
+            <option value="feature">✨ Feature</option>
+            <option value="note">📝 Note</option>
+        </select>
+
+        <textarea id="noteInput" placeholder="Enter your note...
+
+Supports:
+- Bullet points (use - or *)
+- Numbered lists (use 1. 2. 3.)
+- Multiple lines"
+            class="flex-1 w-full border rounded-lg px-3 py-2 outline-none focus:border-amber-500 dark:bg-neutral-800 dark:border-neutral-700 dark:focus:border-amber-500 resize-none font-mono text-sm"
+            onkeydown="if(event.key === 'Enter' && (event.metaKey || event.ctrlKey)) saveDevNote()"></textarea>
+
+        <div class="flex gap-2 mt-4">
+            <button onclick="saveDevNote()"
+                class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition">
+                Save Note (⌘/Ctrl + Enter)
+            </button>
+            <button onclick="closeDevNoteModal()"
+                class="px-6 bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 py-2 rounded-lg text-sm font-medium transition">
+                Cancel
+            </button>
+        </div>
     </div>
 
     <script>
-        const supabaseClient = supabase.createClient('https://iqlndhxlkjmqavpllhcl.supabase.co', 'sb_publishable_sE922DO0e6S-O-K4s0c9yg_o_5p95Ji');
+        // Environment-based configuration
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        const SUPABASE_CONFIG = isLocalhost ? {
+            url: 'https://jatwmjrybucdpttbigoi.supabase.co',
+            key: 'sb_publishable_egBQSs0z5JvbYe68eqt5rA_rKN31Fxz'
+        } : {
+            url: 'https://iqlndhxlkjmqavpllhcl.supabase.co',
+            key: 'sb_publishable_sE922DO0e6S-O-K4s0c9yg_o_5p95Ji'
+        };
+
+        const supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+        console.log(`Environment: ${isLocalhost ? 'DEV' : 'PROD'} | Database: ${SUPABASE_CONFIG.url}`);
 
         async function fetchHabits() {
             const { data, error } = await supabaseClient.from('habits').select('*').order('order', { ascending: true });
@@ -130,9 +463,52 @@
         async function addHabit() {
             const name = document.getElementById('habitInput').value;
             if (!name) return;
-            await supabaseClient.from('habits').insert([{ name, completions: [], order: Math.floor(Date.now() / 1000) }]);
+            await supabaseClient.from('habits').insert([{
+                name,
+                completions: [],
+                order: Math.floor(Date.now() / 1000),
+                created_at: new Date().toISOString()
+            }]);
             document.getElementById('habitInput').value = '';
             fetchHabits();
+        }
+
+        function getDateForDay(startDate, dayIndex) {
+            const start = new Date(startDate);
+            const date = new Date(start);
+            date.setDate(start.getDate() + dayIndex);
+            return date;
+        }
+
+        function formatDate(date) {
+            const options = { weekday: 'short', month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function formatStartDate(dateString) {
+            const date = new Date(dateString);
+            const options = { month: 'short', day: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function initSortable() {
+            const container = document.getElementById('habitContainer');
+            if (container.sortableInstance) {
+                container.sortableInstance.destroy();
+            }
+            container.sortableInstance = Sortable.create(container, {
+                animation: 200,
+                handle: '.drag-handle',
+                ghostClass: 'sortable-ghost',
+                dragClass: 'sortable-drag',
+                onEnd: async function(evt) {
+                    const cards = document.querySelectorAll('.habit-card');
+                    for (let i = 0; i < cards.length; i++) {
+                        const id = cards[i].getAttribute('data-habit-id');
+                        await supabaseClient.from('habits').update({ order: i }).eq('id', id);
+                    }
+                }
+            });
         }
 
         async function toggleDay(habitId, dayIndex, currentCompletions) {
@@ -147,20 +523,41 @@
 
         function renderHabits(habits) {
             const container = document.getElementById('habitContainer');
-            container.innerHTML = habits.map(habit => {
+            container.innerHTML = habits.map((habit, index) => {
+                // Use created_at or fallback to current date for older habits
+                const startDate = habit.created_at || new Date().toISOString();
+                const completedCount = habit.completions.length;
+                const progressPercent = Math.round((completedCount / 60) * 100);
+
                 let gridHTML = '<div class="days-grid">';
                 for (let i = 0; i < 60; i++) {
                     const isDone = habit.completions.includes(i);
-                    gridHTML += `<div class="cell-check ${isDone ? 'active' : ''}" onclick="toggleDay('${habit.id}', ${i}, [${habit.completions}])">${i + 1}</div>`;
+                    const cellDate = getDateForDay(startDate, i);
+                    const tooltip = formatDate(cellDate);
+                    gridHTML += `<div class="cell-check ${isDone ? 'active' : ''}" data-tooltip="${tooltip}" onclick="toggleDay('${habit.id}', ${i}, [${habit.completions}])">${i + 1}</div>`;
                 }
-                return `<div class="group">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="text-xs font-bold text-gray-700 uppercase tracking-widest">${habit.name}</h3>
-                        <button onclick="deleteHabit('${habit.id}')" class="text-gray-300 hover:text-red-500"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                gridHTML += '</div>';
+
+                return `<div class="habit-card group" data-habit-id="${habit.id}">
+                    <div class="flex justify-between items-start mb-3 sm:mb-4">
+                        <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                            <div class="drag-handle text-gray-400 dark:text-neutral-600 flex-shrink-0">
+                                <i data-lucide="grip-vertical" class="w-4 h-4"></i>
+                            </div>
+                            <div class="min-w-0 flex-1">
+                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white tracking-tight truncate">${habit.name}</h3>
+                                <p class="text-[11px] text-gray-400 dark:text-neutral-500 mt-0.5">${formatStartDate(startDate)} · ${completedCount}/60</p>
+                            </div>
+                        </div>
+                        <button onclick="deleteHabit('${habit.id}')" class="text-gray-300 dark:text-neutral-600 hover:text-red-500 dark:hover:text-red-400 p-1.5 -mr-1.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity active:scale-95">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
                     </div>
-                    ${gridHTML}</div>`;
+                    ${gridHTML}
+                </div>`;
             }).join('');
             lucide.createIcons();
+            initSortable();
         }
 
         async function deleteHabit(id) {
@@ -179,6 +576,119 @@
                 document.documentElement.classList.add('dark');
                 localStorage.theme = 'dark';
             }
+        }
+
+        // Dev Notes Functions (only for localhost)
+        function toggleDevNotes() {
+            document.getElementById('devNotesPanel').classList.toggle('open');
+        }
+
+        function openDevNoteModal() {
+            document.getElementById('devNotesModal').classList.add('open');
+            document.getElementById('noteInput').focus();
+            lucide.createIcons();
+        }
+
+        function closeDevNoteModal() {
+            document.getElementById('devNotesModal').classList.remove('open');
+            document.getElementById('noteInput').value = '';
+        }
+
+        async function saveDevNote() {
+            const text = document.getElementById('noteInput').value.trim();
+            const type = document.getElementById('noteType').value;
+            if (!text) return;
+
+            const page = window.location.pathname.split('/').pop() || 'index.html';
+            const entry = {
+                text,
+                type,
+                page,
+                timestamp: new Date().toISOString()
+            };
+
+            await supabaseClient.from('dev_notes').insert([entry]);
+            closeDevNoteModal();
+            fetchDevNotes();
+        }
+
+        async function fetchDevNotes() {
+            const { data, error } = await supabaseClient
+                .from('dev_notes')
+                .select('*')
+                .order('timestamp', { ascending: false });
+
+            if (!error && data) {
+                renderDevNotes(data);
+            }
+        }
+
+        function renderDevNotes(notes) {
+            const container = document.getElementById('devNotesContainer');
+            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
+
+            container.innerHTML = notes.map(note => `
+                <div class="dev-note-item">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-xs font-semibold text-amber-600 dark:text-amber-500">${typeEmoji[note.type]} ${note.type.toUpperCase()}</span>
+                        <button onclick="deleteDevNote('${note.id}')" class="text-gray-300 hover:text-red-500 text-xs">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-1 dev-note-content">${escapeHtml(note.text)}</p>
+                    <div class="flex gap-2 text-xs text-gray-400">
+                        <span>${note.page}</span>
+                        <span>•</span>
+                        <span>${new Date(note.timestamp).toLocaleString()}</span>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        async function deleteDevNote(id) {
+            await supabaseClient.from('dev_notes').delete().eq('id', id);
+            fetchDevNotes();
+        }
+
+        async function copyAllNotes() {
+            const { data, error } = await supabaseClient
+                .from('dev_notes')
+                .select('*')
+                .order('timestamp', { ascending: false });
+
+            if (error || !data || data.length === 0) {
+                alert('No notes to copy');
+                return;
+            }
+
+            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
+            const formatted = data.map(note => {
+                const date = new Date(note.timestamp).toLocaleString();
+                return `${typeEmoji[note.type]} **${note.type.toUpperCase()}** [${note.page}] - ${date}\n${note.text}\n`;
+            }).join('\n---\n\n');
+
+            const fullText = `# Dev Notes (${data.length} total)\n\n${formatted}`;
+
+            try {
+                await navigator.clipboard.writeText(fullText);
+                alert(`Copied ${data.length} notes to clipboard! Paste them in your message to Claude.`);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy. Please try again.');
+            }
+        }
+
+        // Show dev notes button only on localhost
+        if (isLocalhost) {
+            document.getElementById('devNotesBtn').style.display = 'flex';
+            fetchDevNotes();
         }
     </script>
 </body>

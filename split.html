@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Split - Expense Tracker</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body {
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .dark {
+            background: #0a0a0a;
+            color: #e5e5e5;
+        }
+
+        /* Dev Notes Styles */
+        .dev-notes-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+
+        .dev-notes-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6);
+        }
+
+        .dev-notes-modal {
+            position: fixed;
+            top: 0;
+            right: -600px;
+            width: 600px;
+            height: 100vh;
+            background: white;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
+            transition: right 0.3s ease;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .dark .dev-notes-modal {
+            background: #171717;
+            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        .dev-notes-modal.open {
+            right: 0;
+        }
+
+        .dev-note-item {
+            padding: 12px;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.2s;
+        }
+
+        .dark .dev-note-item {
+            border-bottom: 1px solid #262626;
+        }
+
+        .dev-note-item:hover {
+            background: #f8fafc;
+        }
+
+        .dark .dev-note-item:hover {
+            background: #262626;
+        }
+
+        .person-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: #dbeafe;
+            border-radius: 16px;
+            font-size: 12px;
+            color: #1e40af;
+        }
+
+        .dark .person-chip {
+            background: #1e3a8a;
+            color: #bfdbfe;
+        }
+
+        .expense-card {
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 12px;
+            transition: all 0.2s;
+        }
+
+        .dark .expense-card {
+            background: #171717;
+            border-color: #262626;
+        }
+
+        .expense-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .dark .expense-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-neutral-950 min-h-screen">
+    <!-- Header -->
+    <div class="bg-white dark:bg-neutral-900 shadow-sm border-b border-gray-200 dark:border-neutral-800">
+        <div class="max-w-4xl mx-auto px-6 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <a href="index.html" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                </a>
+                <h1 class="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                    💰 Split
+                </h1>
+            </div>
+            <div class="flex gap-3 items-center">
+                <span id="syncStatus" class="text-xs text-gray-400"></span>
+                <button id="themeToggle" class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-neutral-800">
+                    <i data-lucide="sun" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto px-6 py-8">
+        <!-- Add Expense Section -->
+        <div class="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm p-6 mb-6 border border-gray-200 dark:border-neutral-800">
+            <h2 class="text-lg font-semibold mb-4">Add Expense</h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium mb-2">Description</label>
+                    <input type="text" id="expenseDesc" placeholder="Dinner, Groceries, etc."
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Amount ($)</label>
+                    <input type="number" id="expenseAmount" placeholder="0.00" step="0.01"
+                        class="w-full px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Paid By</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="paidByInput" placeholder="Name"
+                            class="flex-1 px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500">
+                        <button onclick="addPaidBy()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            <i data-lucide="user-plus" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div id="paidByDisplay" class="mt-2"></div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium mb-2">Split Between</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="splitPersonInput" placeholder="Name"
+                            onkeypress="if(event.key === 'Enter') addSplitPerson()"
+                            class="flex-1 px-4 py-2 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 outline-none focus:ring-2 focus:ring-emerald-500">
+                        <button onclick="addSplitPerson()" class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                            <i data-lucide="user-plus" class="w-5 h-5"></i>
+                        </button>
+                    </div>
+                    <div id="splitPeopleDisplay" class="mt-2 flex flex-wrap gap-2"></div>
+                </div>
+
+                <button onclick="saveExpense()" class="w-full py-3 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition">
+                    Add Expense
+                </button>
+            </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div id="summarySection" class="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm p-6 mb-6 border border-gray-200 dark:border-neutral-800" style="display: none;">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Balance Summary</h2>
+                <button onclick="clearAllExpenses()" class="text-sm text-red-500 hover:text-red-600">
+                    Clear All
+                </button>
+            </div>
+            <div id="balanceSummary" class="space-y-2"></div>
+        </div>
+
+        <!-- Expenses List -->
+        <div class="bg-white dark:bg-neutral-900 rounded-2xl shadow-sm p-6 border border-gray-200 dark:border-neutral-800">
+            <h2 class="text-lg font-semibold mb-4">Recent Expenses</h2>
+            <div id="expensesList"></div>
+        </div>
+    </div>
+
+    <!-- Dev Notes Button -->
+    <button id="devNotesBtn" class="dev-notes-btn" onclick="toggleDevNotes()" style="display: none;">
+        <i data-lucide="clipboard" class="w-6 h-6"></i>
+    </button>
+
+    <!-- Dev Notes Panel -->
+    <div id="devNotesModal" class="dev-notes-modal">
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-800">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Dev Notes</h2>
+                <button onclick="toggleDevNotes()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div class="flex gap-2 mb-3">
+                <select id="noteType" class="text-sm border rounded px-2 py-1 dark:bg-neutral-800 dark:border-neutral-700">
+                    <option value="bug">🐛 Bug</option>
+                    <option value="feature">✨ Feature</option>
+                    <option value="note">📝 Note</option>
+                </select>
+                <button onclick="openNoteModal()" class="flex-1 text-sm border rounded px-3 py-1 text-left text-gray-400 hover:bg-gray-50 dark:hover:bg-neutral-800 dark:bg-neutral-800 dark:border-neutral-700">
+                    Add note...
+                </button>
+            </div>
+            <button onclick="startScreenshotCapture()" class="w-full py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 mb-2 flex items-center justify-center gap-2">
+                <i data-lucide="camera" class="w-4 h-4"></i> 📸 Screenshot for Claude
+            </button>
+            <button onclick="copyAllNotes()" class="w-full py-2 bg-amber-500 text-white rounded text-sm hover:bg-amber-600 mb-2">
+                📋 Copy All for Claude
+            </button>
+        </div>
+        <div id="devNotesContainer" class="flex-1 overflow-y-auto"></div>
+    </div>
+
+    <!-- Note Input Modal -->
+    <div id="noteInputModal" class="fixed inset-0 bg-black/50 flex items-center justify-center" style="display: none; z-index: 1002;">
+        <div class="bg-white dark:bg-neutral-900 rounded-lg shadow-xl w-full max-w-2xl mx-4">
+            <div class="p-6 border-b border-gray-200 dark:border-neutral-800">
+                <h3 class="font-semibold">Add Note</h3>
+            </div>
+            <div class="p-6">
+                <textarea id="noteTextarea" placeholder="Type your note here... (⌘/Ctrl + Enter to save)"
+                    class="w-full h-48 px-4 py-3 border border-gray-300 dark:border-neutral-700 rounded-lg bg-white dark:bg-neutral-800 outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+                    onkeydown="if((event.metaKey || event.ctrlKey) && event.key === 'Enter') saveDevNote()"></textarea>
+            </div>
+            <div class="p-6 border-t border-gray-200 dark:border-neutral-800 flex gap-2 justify-end">
+                <button onclick="closeNoteModal()" class="px-4 py-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-neutral-800 rounded">
+                    Cancel
+                </button>
+                <button onclick="saveDevNote()" class="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600">
+                    Save Note
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Screenshot Markup Editor -->
+    <div id="screenshotEditor" class="fixed inset-0 bg-black/95" style="display: none; z-index: 2000;">
+        <div class="h-full flex flex-col">
+            <!-- Toolbar -->
+            <div class="bg-neutral-900 border-b border-neutral-700 p-4 flex items-center justify-between">
+                <div class="flex items-center gap-4">
+                    <button onclick="setMarkupTool('circle')" id="toolCircle" class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-white text-sm">
+                        ⭕ Circle
+                    </button>
+                    <button onclick="setMarkupTool('rect')" id="toolRect" class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-white text-sm">
+                        ◻️ Rectangle
+                    </button>
+                    <button onclick="setMarkupTool('arrow')" id="toolArrow" class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-white text-sm">
+                        ➡️ Arrow
+                    </button>
+                    <button onclick="setMarkupTool('text')" id="toolText" class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-white text-sm">
+                        📝 Text
+                    </button>
+                    <input type="color" id="markupColor" value="#ff0000" class="w-12 h-10 rounded cursor-pointer" title="Change color">
+                    <button onclick="undoMarkup()" class="px-4 py-2 bg-neutral-800 hover:bg-neutral-700 rounded text-white text-sm">
+                        ↶ Undo
+                    </button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="cancelScreenshot()" class="px-4 py-2 bg-neutral-700 hover:bg-neutral-600 rounded text-white text-sm">
+                        Cancel
+                    </button>
+                    <button onclick="saveScreenshotWithMarkup()" class="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded text-white text-sm font-medium">
+                        Save to Notes
+                    </button>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div class="flex-1 flex items-center justify-center overflow-auto p-4">
+                <div class="relative">
+                    <canvas id="screenshotCanvas" class="max-w-full max-h-full cursor-crosshair"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Environment detection
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+
+        const SUPABASE_CONFIG = isLocalhost ? {
+            url: 'https://jatwmjrybucdpttbigoi.supabase.co',
+            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphdHdtanJ5YnVjZHB0dGJpZ29pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY3MzQ0NTMsImV4cCI6MjA1MjMxMDQ1M30.egBQSs0z5JvbYe68eqt5rA_rKN31Fxz-yc73JIo66-k'
+        } : {
+            url: 'https://iqlndhxlkjmqavpllhcl.supabase.co',
+            key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlxbG5kaHhsa2ptcWF2cGxsaGNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY1MzMyMDIsImV4cCI6MjA1MjEwOTIwMn0.sE922DO0e6S-O-K4s0c9yg_o_5p95Ji-EqBGOZ2BKvg'
+        };
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
+
+        let currentExpense = {
+            paidBy: null,
+            splitBetween: []
+        };
+
+        // Theme management
+        const theme = localStorage.getItem('theme') || 'light';
+        if (theme === 'dark') document.documentElement.classList.add('dark');
+
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            const newTheme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            localStorage.setItem('theme', newTheme);
+            lucide.createIcons();
+        });
+
+        // Add person who paid
+        function addPaidBy() {
+            const input = document.getElementById('paidByInput');
+            const name = input.value.trim();
+            if (!name) return;
+
+            currentExpense.paidBy = name;
+            document.getElementById('paidByDisplay').innerHTML = `
+                <span class="person-chip">
+                    ${name}
+                    <button onclick="removePaidBy()" class="hover:text-red-600">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </span>
+            `;
+            input.value = '';
+            lucide.createIcons();
+        }
+
+        function removePaidBy() {
+            currentExpense.paidBy = null;
+            document.getElementById('paidByDisplay').innerHTML = '';
+        }
+
+        // Add person to split
+        function addSplitPerson() {
+            const input = document.getElementById('splitPersonInput');
+            const name = input.value.trim();
+            if (!name || currentExpense.splitBetween.includes(name)) return;
+
+            currentExpense.splitBetween.push(name);
+            renderSplitPeople();
+            input.value = '';
+        }
+
+        function removeSplitPerson(name) {
+            currentExpense.splitBetween = currentExpense.splitBetween.filter(p => p !== name);
+            renderSplitPeople();
+        }
+
+        function renderSplitPeople() {
+            const container = document.getElementById('splitPeopleDisplay');
+            container.innerHTML = currentExpense.splitBetween.map(name => `
+                <span class="person-chip">
+                    ${name}
+                    <button onclick="removeSplitPerson('${name}')" class="hover:text-red-600">
+                        <i data-lucide="x" class="w-3 h-3"></i>
+                    </button>
+                </span>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // Save expense
+        async function saveExpense() {
+            const desc = document.getElementById('expenseDesc').value.trim();
+            const amount = parseFloat(document.getElementById('expenseAmount').value);
+
+            if (!desc || isNaN(amount) || amount <= 0 || !currentExpense.paidBy || currentExpense.splitBetween.length === 0) {
+                alert('Please fill all fields with valid data');
+                return;
+            }
+
+            const expense = {
+                description: desc,
+                amount: amount,
+                paid_by: currentExpense.paidBy,
+                split_between: currentExpense.splitBetween,
+                timestamp: new Date().toISOString()
+            };
+
+            await supabaseClient.from('expenses').insert([expense]);
+
+            // Reset form
+            document.getElementById('expenseDesc').value = '';
+            document.getElementById('expenseAmount').value = '';
+            currentExpense = { paidBy: null, splitBetween: [] };
+            document.getElementById('paidByDisplay').innerHTML = '';
+            document.getElementById('splitPeopleDisplay').innerHTML = '';
+
+            fetchExpenses();
+            updateSyncStatus('Synced ✓');
+        }
+
+        // Fetch and render expenses
+        async function fetchExpenses() {
+            const { data, error } = await supabaseClient
+                .from('expenses')
+                .select('*')
+                .order('timestamp', { ascending: false });
+
+            if (!error && data) {
+                renderExpenses(data);
+                calculateBalances(data);
+            }
+        }
+
+        function renderExpenses(expenses) {
+            const container = document.getElementById('expensesList');
+
+            if (expenses.length === 0) {
+                container.innerHTML = '<p class="text-gray-400 text-center py-8">No expenses yet</p>';
+                return;
+            }
+
+            container.innerHTML = expenses.map(exp => {
+                const perPerson = (exp.amount / exp.split_between.length).toFixed(2);
+                return `
+                    <div class="expense-card">
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <h3 class="font-semibold text-lg">${exp.description}</h3>
+                                <p class="text-sm text-gray-500 dark:text-gray-400">
+                                    ${new Date(exp.timestamp).toLocaleDateString()}
+                                </p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">$${exp.amount.toFixed(2)}</p>
+                                <p class="text-xs text-gray-500">$${perPerson} per person</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="text-gray-600 dark:text-gray-400">Paid by:</span>
+                            <span class="font-medium">${exp.paid_by}</span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm mt-1">
+                            <span class="text-gray-600 dark:text-gray-400">Split:</span>
+                            <span class="font-medium">${exp.split_between.join(', ')}</span>
+                        </div>
+                        <button onclick="deleteExpense('${exp.id}')" class="mt-3 text-red-500 hover:text-red-600 text-sm">
+                            <i data-lucide="trash-2" class="w-4 h-4 inline"></i> Delete
+                        </button>
+                    </div>
+                `;
+            }).join('');
+            lucide.createIcons();
+        }
+
+        function calculateBalances(expenses) {
+            const balances = {};
+
+            expenses.forEach(exp => {
+                const perPerson = exp.amount / exp.split_between.length;
+
+                // Add to payer's balance
+                if (!balances[exp.paid_by]) balances[exp.paid_by] = 0;
+                balances[exp.paid_by] += exp.amount;
+
+                // Subtract from each person's balance
+                exp.split_between.forEach(person => {
+                    if (!balances[person]) balances[person] = 0;
+                    balances[person] -= perPerson;
+                });
+            });
+
+            renderBalances(balances);
+        }
+
+        function renderBalances(balances) {
+            const container = document.getElementById('balanceSummary');
+            const section = document.getElementById('summarySection');
+
+            const entries = Object.entries(balances);
+            if (entries.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            container.innerHTML = entries
+                .sort((a, b) => b[1] - a[1])
+                .map(([person, amount]) => {
+                    const isPositive = amount > 0;
+                    const absAmount = Math.abs(amount).toFixed(2);
+                    return `
+                        <div class="flex justify-between items-center py-2 border-b border-gray-100 dark:border-neutral-800">
+                            <span class="font-medium">${person}</span>
+                            <span class="text-lg font-semibold ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'}">
+                                ${isPositive ? '+' : '-'}$${absAmount}
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        async function deleteExpense(id) {
+            if (!confirm('Delete this expense?')) return;
+            await supabaseClient.from('expenses').delete().eq('id', id);
+            fetchExpenses();
+        }
+
+        async function clearAllExpenses() {
+            if (!confirm('Clear all expenses? This cannot be undone.')) return;
+            await supabaseClient.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            fetchExpenses();
+        }
+
+        function updateSyncStatus(message) {
+            const status = document.getElementById('syncStatus');
+            status.textContent = message;
+            setTimeout(() => status.textContent = '', 2000);
+        }
+
+        // Dev Notes Functions
+        let currentScreenshotData = null;
+        let markupCanvas, markupCtx;
+        let markupTool = 'circle';
+        let markupColor = '#ff0000';
+        let isDrawing = false;
+        let startX, startY;
+        let markupHistory = [];
+        let baseImageData;
+
+        function toggleDevNotes() {
+            document.getElementById('devNotesModal').classList.toggle('open');
+        }
+
+        function openNoteModal() {
+            document.getElementById('noteInputModal').style.display = 'flex';
+            document.getElementById('noteTextarea').focus();
+        }
+
+        function closeNoteModal() {
+            document.getElementById('noteInputModal').style.display = 'none';
+            document.getElementById('noteTextarea').value = '';
+            currentScreenshotData = null;
+        }
+
+        async function startScreenshotCapture() {
+            try {
+                // Capture the entire page
+                const canvas = await html2canvas(document.body, {
+                    useCORS: true,
+                    allowTaint: true,
+                    scrollY: -window.scrollY,
+                    scrollX: -window.scrollX,
+                    width: window.innerWidth,
+                    height: window.innerHeight
+                });
+
+                // Open markup editor with captured screenshot
+                openMarkupEditor(canvas);
+            } catch (error) {
+                console.error('Screenshot failed:', error);
+                alert('Screenshot capture failed. Please try using browser screenshot tools instead.');
+            }
+        }
+
+        function openMarkupEditor(sourceCanvas) {
+            markupCanvas = document.getElementById('screenshotCanvas');
+            markupCtx = markupCanvas.getContext('2d');
+
+            // Set canvas size to match screenshot
+            markupCanvas.width = sourceCanvas.width;
+            markupCanvas.height = sourceCanvas.height;
+
+            // Draw the screenshot
+            markupCtx.drawImage(sourceCanvas, 0, 0);
+            baseImageData = markupCtx.getImageData(0, 0, markupCanvas.width, markupCanvas.height);
+
+            // Show editor
+            document.getElementById('screenshotEditor').style.display = 'block';
+            markupHistory = [];
+
+            // Setup canvas events
+            markupCanvas.onmousedown = startMarkup;
+            markupCanvas.onmousemove = drawMarkup;
+            markupCanvas.onmouseup = endMarkup;
+            markupCanvas.onclick = handleTextTool;
+        }
+
+        function setMarkupTool(tool) {
+            markupTool = tool;
+            document.querySelectorAll('[id^="tool"]').forEach(btn => {
+                btn.classList.remove('bg-blue-600');
+                btn.classList.add('bg-neutral-800');
+            });
+            document.getElementById('tool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.add('bg-blue-600');
+            document.getElementById('tool' + tool.charAt(0).toUpperCase() + tool.slice(1)).classList.remove('bg-neutral-800');
+        }
+
+        function startMarkup(e) {
+            if (markupTool === 'text') return;
+            isDrawing = true;
+            const rect = markupCanvas.getBoundingClientRect();
+            startX = (e.clientX - rect.left) * (markupCanvas.width / rect.width);
+            startY = (e.clientY - rect.top) * (markupCanvas.height / rect.height);
+        }
+
+        function drawMarkup(e) {
+            if (!isDrawing || markupTool === 'text') return;
+
+            const rect = markupCanvas.getBoundingClientRect();
+            const currentX = (e.clientX - rect.left) * (markupCanvas.width / rect.width);
+            const currentY = (e.clientY - rect.top) * (markupCanvas.height / rect.height);
+
+            // Restore canvas to base + history
+            markupCtx.putImageData(baseImageData, 0, 0);
+            redrawHistory();
+
+            // Draw current shape preview
+            markupCtx.strokeStyle = document.getElementById('markupColor').value;
+            markupCtx.lineWidth = 3;
+            markupCtx.lineCap = 'round';
+
+            if (markupTool === 'circle') {
+                const radius = Math.sqrt(Math.pow(currentX - startX, 2) + Math.pow(currentY - startY, 2));
+                markupCtx.beginPath();
+                markupCtx.arc(startX, startY, radius, 0, 2 * Math.PI);
+                markupCtx.stroke();
+            } else if (markupTool === 'rect') {
+                markupCtx.strokeRect(startX, startY, currentX - startX, currentY - startY);
+            } else if (markupTool === 'arrow') {
+                drawArrow(startX, startY, currentX, currentY);
+            }
+        }
+
+        function endMarkup(e) {
+            if (!isDrawing || markupTool === 'text') return;
+            isDrawing = false;
+
+            const rect = markupCanvas.getBoundingClientRect();
+            const endX = (e.clientX - rect.left) * (markupCanvas.width / rect.width);
+            const endY = (e.clientY - rect.top) * (markupCanvas.height / rect.height);
+
+            // Save to history
+            markupHistory.push({
+                tool: markupTool,
+                color: document.getElementById('markupColor').value,
+                startX, startY, endX, endY
+            });
+
+            baseImageData = markupCtx.getImageData(0, 0, markupCanvas.width, markupCanvas.height);
+        }
+
+        function handleTextTool(e) {
+            if (markupTool !== 'text') return;
+
+            const rect = markupCanvas.getBoundingClientRect();
+            const x = (e.clientX - rect.left) * (markupCanvas.width / rect.width);
+            const y = (e.clientY - rect.top) * (markupCanvas.height / rect.height);
+
+            const text = prompt('Enter text:');
+            if (!text) return;
+
+            markupCtx.font = '24px Arial';
+            markupCtx.fillStyle = document.getElementById('markupColor').value;
+            markupCtx.fillText(text, x, y);
+
+            markupHistory.push({
+                tool: 'text',
+                color: document.getElementById('markupColor').value,
+                x, y, text
+            });
+
+            baseImageData = markupCtx.getImageData(0, 0, markupCanvas.width, markupCanvas.height);
+        }
+
+        function drawArrow(fromX, fromY, toX, toY) {
+            const headLength = 20;
+            const angle = Math.atan2(toY - fromY, toX - fromX);
+
+            markupCtx.beginPath();
+            markupCtx.moveTo(fromX, fromY);
+            markupCtx.lineTo(toX, toY);
+            markupCtx.stroke();
+
+            markupCtx.beginPath();
+            markupCtx.moveTo(toX, toY);
+            markupCtx.lineTo(toX - headLength * Math.cos(angle - Math.PI / 6), toY - headLength * Math.sin(angle - Math.PI / 6));
+            markupCtx.moveTo(toX, toY);
+            markupCtx.lineTo(toX - headLength * Math.cos(angle + Math.PI / 6), toY - headLength * Math.sin(angle + Math.PI / 6));
+            markupCtx.stroke();
+        }
+
+        function redrawHistory() {
+            markupHistory.forEach(item => {
+                markupCtx.strokeStyle = item.color;
+                markupCtx.fillStyle = item.color;
+                markupCtx.lineWidth = 3;
+
+                if (item.tool === 'circle') {
+                    const radius = Math.sqrt(Math.pow(item.endX - item.startX, 2) + Math.pow(item.endY - item.startY, 2));
+                    markupCtx.beginPath();
+                    markupCtx.arc(item.startX, item.startY, radius, 0, 2 * Math.PI);
+                    markupCtx.stroke();
+                } else if (item.tool === 'rect') {
+                    markupCtx.strokeRect(item.startX, item.startY, item.endX - item.startX, item.endY - item.startY);
+                } else if (item.tool === 'arrow') {
+                    drawArrow(item.startX, item.startY, item.endX, item.endY);
+                } else if (item.tool === 'text') {
+                    markupCtx.font = '24px Arial';
+                    markupCtx.fillText(item.text, item.x, item.y);
+                }
+            });
+        }
+
+        function undoMarkup() {
+            if (markupHistory.length === 0) return;
+            markupHistory.pop();
+            markupCtx.putImageData(baseImageData, 0, 0);
+
+            // Redraw from base image
+            const tempCanvas = document.createElement('canvas');
+            tempCanvas.width = markupCanvas.width;
+            tempCanvas.height = markupCanvas.height;
+            const tempCtx = tempCanvas.getContext('2d');
+
+            // Get the original image without any markup
+            const img = new Image();
+            img.onload = () => {
+                tempCtx.drawImage(img, 0, 0);
+                baseImageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+                markupCtx.putImageData(baseImageData, 0, 0);
+                redrawHistory();
+                baseImageData = markupCtx.getImageData(0, 0, markupCanvas.width, markupCanvas.height);
+            };
+            img.src = markupCanvas.toDataURL();
+        }
+
+        function cancelScreenshot() {
+            document.getElementById('screenshotEditor').style.display = 'none';
+            currentScreenshotData = null;
+        }
+
+        async function saveScreenshotWithMarkup() {
+            currentScreenshotData = markupCanvas.toDataURL('image/png');
+            document.getElementById('screenshotEditor').style.display = 'none';
+
+            // Automatically save to dev notes
+            const type = document.getElementById('noteType').value;
+            const page = window.location.pathname.split('/').pop() || 'split.html';
+
+            const entry = {
+                text: '(Annotated Screenshot)',
+                type,
+                page,
+                screenshot: currentScreenshotData,
+                timestamp: new Date().toISOString()
+            };
+
+            await supabaseClient.from('dev_notes').insert([entry]);
+            currentScreenshotData = null;
+            fetchDevNotes();
+            alert('Screenshot saved to dev notes!');
+        }
+
+        async function saveDevNote() {
+            const text = document.getElementById('noteTextarea').value.trim();
+            const type = document.getElementById('noteType').value;
+            if (!text) return;
+
+            const page = window.location.pathname.split('/').pop() || 'split.html';
+            const entry = {
+                text,
+                type,
+                page,
+                screenshot: null,
+                timestamp: new Date().toISOString()
+            };
+
+            await supabaseClient.from('dev_notes').insert([entry]);
+            closeNoteModal();
+            fetchDevNotes();
+        }
+
+        async function fetchDevNotes() {
+            const { data, error } = await supabaseClient
+                .from('dev_notes')
+                .select('*')
+                .order('timestamp', { ascending: false });
+
+            if (!error && data) {
+                renderDevNotes(data);
+            }
+        }
+
+        function renderDevNotes(notes) {
+            const container = document.getElementById('devNotesContainer');
+            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
+
+            container.innerHTML = notes.map(note => `
+                <div class="dev-note-item">
+                    <div class="flex justify-between items-start mb-1">
+                        <span class="text-xs font-semibold text-amber-600 dark:text-amber-500">${typeEmoji[note.type]} ${note.type.toUpperCase()}</span>
+                        <button onclick="deleteDevNote('${note.id}')" class="text-gray-300 hover:text-red-500 text-xs">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-1 whitespace-pre-wrap">${note.text}</p>
+                    ${note.screenshot ? `<img src="${note.screenshot}" class="w-full mt-2 rounded border border-gray-300 dark:border-neutral-700 cursor-pointer" onclick="window.open('${note.screenshot}', '_blank')" />` : ''}
+                    <div class="flex gap-2 text-xs text-gray-400 mt-2">
+                        <span>${note.page}</span>
+                        <span>•</span>
+                        <span>${new Date(note.timestamp).toLocaleString()}</span>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        async function deleteDevNote(id) {
+            await supabaseClient.from('dev_notes').delete().eq('id', id);
+            fetchDevNotes();
+        }
+
+        async function copyAllNotes() {
+            const { data, error } = await supabaseClient
+                .from('dev_notes')
+                .select('*')
+                .order('timestamp', { ascending: false });
+
+            if (error || !data) return;
+
+            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
+            const formatted = data.map(note => {
+                const date = new Date(note.timestamp).toLocaleString();
+                const screenshotNote = note.screenshot ? '\n📸 [Screenshot attached - visible in UI]' : '';
+                return `${typeEmoji[note.type]} **${note.type.toUpperCase()}** [${note.page}] - ${date}\n${note.text}${screenshotNote}\n`;
+            }).join('\n---\n\n');
+
+            const fullText = `# Dev Notes (${data.length} total)\n\n${formatted}`;
+            await navigator.clipboard.writeText(fullText);
+            alert('Notes copied to clipboard!');
+        }
+
+        // Initialize
+        if (isLocalhost) {
+            document.getElementById('devNotesBtn').style.display = 'flex';
+            fetchDevNotes();
+        }
+
+        fetchExpenses();
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Cloud Launchpad</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏠</text></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <script>
+        // Init Theme
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles/common.css">
+</head>
+
+<body class="p-8 md:p-20 bg-slate-50 text-slate-800 dark:bg-slate-950 dark:text-slate-200 transition-colors duration-300">
+
+    <div class="max-w-4xl mx-auto">
+        <header class="mb-16 flex justify-between items-center">
+            <div>
+                <h1 class="text-3xl font-semibold tracking-tight">Nexus Cloud</h1>
+                <p id="syncStatus" class="text-emerald-500 text-[10px] uppercase tracking-widest font-bold mt-1">
+                    Initializing...</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="window.launcher.toggleTheme()"
+                    class="bg-white dark:bg-slate-800 text-slate-500 hover:text-black dark:hover:text-white p-2 rounded-full border border-slate-200 dark:border-slate-700 transition">
+                    <i data-lucide="moon" class="w-5 h-5 hidden dark:block"></i>
+                    <i data-lucide="sun" class="w-5 h-5 block dark:hidden"></i>
+                </button>
+                <button onclick="window.launcher.toggleModal('add')"
+                    class="bg-black text-white px-5 py-2 rounded-full text-xs font-medium hover:bg-slate-800 dark:bg-white dark:text-black dark:hover:bg-slate-200 transition">Add
+                    Shortcut</button>
+            </div>
+        </header>
+
+        <div id="launcherGrid" class="grid grid-cols-2 md:grid-cols-4 gap-6"></div>
+    </div>
+
+    <!-- Dev Notes (only visible in localhost) -->
+    <button id="devNotesBtn" class="dev-notes-btn" onclick="window.launcher.toggleDevNotes()" style="display: none;">
+        <i data-lucide="clipboard" class="w-6 h-6"></i>
+    </button>
+
+    <div id="devNotesPanel" class="dev-notes-panel">
+        <div class="p-6 border-b border-gray-200 dark:border-neutral-800">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold">Dev Notes</h2>
+                <button onclick="window.launcher.toggleDevNotes()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <button onclick="window.launcher.openDevNoteModal()"
+                class="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition mb-2">
+                + New Note
+            </button>
+            <button onclick="window.launcher.copyAllNotes()"
+                class="w-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-xs font-medium transition">
+                📋 Copy All for Claude
+            </button>
+        </div>
+        <div id="devNotesContainer" class="flex-1 overflow-y-auto"></div>
+    </div>
+
+    <!-- Dev Notes Modal -->
+    <div id="devNotesModal" class="dev-notes-modal">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">Add Dev Note</h3>
+            <button onclick="window.launcher.closeDevNoteModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <select id="noteType" class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
+            <option value="bug">🐛 Bug</option>
+            <option value="feature">✨ Feature</option>
+            <option value="note">📝 Note</option>
+        </select>
+
+        <textarea id="noteInput" placeholder="Enter your note...
+
+Supports:
+- Bullet points (use - or *)
+- Numbered lists (use 1. 2. 3.)
+- Multiple lines"
+            class="flex-1 w-full border rounded-lg px-3 py-2 outline-none focus:border-amber-500 dark:bg-neutral-800 dark:border-neutral-700 dark:focus:border-amber-500 resize-none font-mono text-sm"
+            onkeydown="if(event.key === 'Enter' && (event.metaKey || event.ctrlKey)) window.launcher.saveDevNote()"></textarea>
+
+        <div class="flex gap-2 mt-4">
+            <button onclick="window.launcher.saveDevNote()"
+                class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition">
+                Save Note (⌘/Ctrl + Enter)
+            </button>
+            <button onclick="window.launcher.closeDevNoteModal()"
+                class="px-6 bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 py-2 rounded-lg text-sm font-medium transition">
+                Cancel
+            </button>
+        </div>
+    </div>
+
+    <div id="modal"
+        class="hidden fixed inset-0 bg-slate-900/20 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl p-8 w-full max-w-sm shadow-2xl transition-colors">
+            <h2 id="modalTitle" class="text-lg font-semibold mb-6">Shortcut Details</h2>
+            <input type="hidden" id="editId">
+
+            <label class="metadata-text block mb-1 ml-1">Display Name</label>
+            <input type="text" id="nameInput" placeholder="e.g. Habit Tracker"
+                class="w-full border-b mb-6 p-2 outline-none focus:border-black dark:bg-transparent dark:border-slate-700 dark:focus:border-white"
+                onkeypress="if(event.key === 'Enter') window.launcher.saveShortcut()">
+
+            <label class="metadata-text block mb-1 ml-1">Filename or URL</label>
+            <input type="text" id="urlInput" placeholder="e.g. habit_tracker.html"
+                class="w-full border-b mb-8 p-2 outline-none focus:border-black dark:bg-transparent dark:border-slate-700 dark:focus:border-white"
+                onkeypress="if(event.key === 'Enter') window.launcher.saveShortcut()">
+
+            <div class="flex gap-3">
+                <button onclick="window.launcher.saveShortcut()"
+                    class="flex-1 bg-black text-white py-3 rounded-xl text-sm font-medium dark:bg-white dark:text-black">Save
+                    App</button>
+                <button onclick="window.launcher.toggleModal()"
+                    class="flex-1 bg-slate-100 py-3 rounded-xl text-sm font-medium dark:bg-slate-800 dark:text-white">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { init } from '/src/apps/launcher.js';
+        init();
+    </script>
+</body>
+
+</html>
