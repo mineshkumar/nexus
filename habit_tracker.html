@@ -41,46 +41,38 @@
             background: #0a0a0a;
         }
 
-        /* Mobile-first grid: 10 columns on mobile, 15 on tablet, 20 on desktop */
+        /* Mobile-first grid: 10 columns on mobile, 20 on desktop */
         .days-grid {
             display: grid;
-            grid-template-columns: repeat(10, 1fr);
+            grid-template-columns: repeat(10, minmax(0, 1fr));
             gap: 4px;
         }
 
         @media (min-width: 480px) {
             .days-grid {
-                grid-template-columns: repeat(12, 1fr);
+                grid-template-columns: repeat(12, minmax(0, 1fr));
                 gap: 5px;
             }
         }
 
         @media (min-width: 640px) {
             .days-grid {
-                grid-template-columns: repeat(15, 1fr);
+                grid-template-columns: repeat(20, minmax(0, 1fr));
                 gap: 5px;
             }
         }
 
-        @media (min-width: 768px) {
-            .days-grid {
-                grid-template-columns: repeat(20, 1fr);
-                gap: 6px;
-            }
-        }
-
-        /* Touch-friendly cells: minimum 44px tap target on mobile */
+        /* Touch-friendly cells */
         .cell-check {
-            width: 100%;
             aspect-ratio: 1;
-            min-height: 28px;
-            border-radius: 6px;
+            min-width: 0;
+            border-radius: 5px;
             background: #e8edf2;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 600;
             color: #9ca3af;
             transition: transform 0.15s ease, background 0.15s ease;
@@ -88,10 +80,11 @@
             user-select: none;
         }
 
-        @media (min-width: 640px) {
+        /* Larger tap targets on mobile */
+        @media (max-width: 639px) {
             .cell-check {
-                font-size: 9px;
-                border-radius: 5px;
+                font-size: 10px;
+                border-radius: 6px;
             }
         }
 
@@ -356,7 +349,8 @@
             <input type="text" id="habitInput" placeholder="New habit..."
                 class="flex-1 bg-transparent text-lg sm:text-xl outline-none border-b border-gray-200 pb-2 focus:border-emerald-500 font-light dark:border-neutral-800 dark:focus:border-emerald-500"
                 onkeypress="if(event.key === 'Enter') addHabit()">
-            <button onclick="addHabit()" class="text-emerald-500 active:scale-95 transition p-1">
+            <!-- Only show + button on mobile (touch devices) -->
+            <button onclick="addHabit()" class="text-emerald-500 active:scale-95 transition p-1 sm:hidden">
                 <i data-lucide="plus-circle" class="w-7 h-7"></i>
             </button>
         </section>
