@@ -13,6 +13,10 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script type="module">
+        import { calculateStreak } from './src/utils.js';
+        window.calculateStreak = calculateStreak;
+    </script>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
         tailwind.config = {
@@ -705,7 +709,7 @@
             document.getElementById('detailTitle').innerText = habit.name;
 
             // Stats
-            document.getElementById('detailStreak').innerText = calculateStreak(habit.completions) + ' days';
+            document.getElementById('detailStreak').innerText = calculateStreak(habit.completions, habit.created_at) + ' days';
             document.getElementById('detailTotal').innerText = habit.completions.length;
             const daysSinceStart = Math.max(1, Math.floor((new Date() - new Date(habit.created_at)) / (1000 * 60 * 60 * 24)));
             const rate = Math.round((habit.completions.length / daysSinceStart) * 100);
@@ -720,31 +724,7 @@
             fetchHabits();
         }
 
-        function calculateStreak(completions) {
-            if (!completions || !completions.length) return 0;
-            // Determine "today" index relative to creation
-            const createdAt = new Date(currentDetailHabit.created_at);
-            const todayIdx = Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24));
 
-            // 1. Filter out future dates and sort descending
-            const sorted = [...completions].filter(c => c <= todayIdx).sort((a, b) => b - a);
-            if (sorted.length === 0) return 0;
-
-            // 2. Check if streak is alive (today or yesterday must be present)
-            const latest = sorted[0];
-            if (latest < todayIdx - 1) return 0;
-
-            // 3. Count consecutive days
-            let streak = 1;
-            for (let i = 1; i < sorted.length; i++) {
-                if (sorted[i] === sorted[i - 1] - 1) {
-                    streak++;
-                } else {
-                    break;
-                }
-            }
-            return streak;
-        }
 
         function changeCalMonth(delta) {
             currentCalDate.setMonth(currentCalDate.getMonth() + delta);

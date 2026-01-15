@@ -3,21 +3,180 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Nexus Intent Logger</title>
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Logger</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                    fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', 'San Francisco', 'sans-serif'] },
+                    colors: {
+                        ios: {
+                            bg: '#F2F2F7',
+                            'bg-dark': '#000000',
+                            blue: '#007AFF',
+                            orange: '#FF9500'
+                        }
+                    }
                 }
             }
         }
     </script>
+    <style>
+        body {
+            background-color: #F2F2F7;
+            color: #000;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: calc(83px + env(safe-area-inset-bottom));
+        }
+
+        .dark body {
+            background-color: #000;
+            color: #fff;
+        }
+
+        .ios-header {
+            padding: 16px;
+            padding-top: max(16px, env(safe-area-inset-top));
+            background: transparent;
+        }
+
+        .large-title {
+            font-size: 34px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .inset-list {
+            margin: 0 16px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #fff;
+        }
+
+        .dark .inset-list {
+            background: #1C1C1E;
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(49px + env(safe-area-inset-bottom));
+            background: rgba(249, 249, 249, 0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-around;
+            padding-top: 8px;
+            z-index: 1000;
+        }
+
+        .dark .tab-bar {
+            background: rgba(20, 20, 20, 0.94);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 60px;
+            color: #8E8E93;
+            font-size: 10px;
+            font-weight: 500;
+            gap: 2px;
+        }
+
+        .tab-item.active {
+            color: #FF9500;
+        }
+
+        /* Orange for Logger */
+
+        .view {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Search Bar Input Style */
+        .ios-search-container {
+            padding: 8px 16px;
+            background: transparent;
+        }
+
+        .ios-search-bar {
+            background: #E3E3E8;
+            border-radius: 10px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #8E8E93;
+        }
+
+        .dark .ios-search-bar {
+            background: #1C1C1E;
+        }
+
+        .ios-search-input {
+            background: transparent;
+            border: none;
+            outline: none;
+            width: 100%;
+            font-size: 17px;
+            color: #000;
+        }
+
+        .dark .ios-search-input {
+            color: #fff;
+        }
+
+        /* Log Item */
+        .log-item {
+            padding: 12px 16px;
+            background: white;
+            border-bottom: 0.5px solid #C6C6C8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dark .log-item {
+            background: #1C1C1E;
+            border-bottom: 0.5px solid #38383A;
+        }
+
+        .log-item:last-child {
+            border-bottom: none;
+        }
+    </style>
     <script>
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
@@ -25,230 +184,85 @@
             document.documentElement.classList.remove('dark');
         }
     </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-
-        .glass {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 0, 0, 0.04);
-            transition: background-color 0.3s, border-color 0.3s;
-        }
-
-        .dark .glass {
-            background: rgba(23, 23, 23, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-
-        .metadata-text {
-            font-size: 10px;
-            color: #9ca3af;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        /* Dev Notes Styles */
-        .dev-notes-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #f59e0b;
-            color: white;
-            border: none;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-            z-index: 1000;
-        }
-
-        .dev-notes-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6);
-        }
-
-        .dev-notes-panel {
-            position: fixed;
-            top: 0;
-            right: -400px;
-            width: 400px;
-            height: 100vh;
-            background: white;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
-            transition: right 0.3s ease;
-            z-index: 999;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .dark .dev-notes-panel {
-            background: #171717;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .dev-notes-panel.open {
-            right: 0;
-        }
-
-        .dev-note-item {
-            padding: 12px;
-            border-bottom: 1px solid #f1f5f9;
-            transition: background 0.2s;
-        }
-
-        .dark .dev-note-item {
-            border-bottom: 1px solid #262626;
-        }
-
-        .dev-note-item:hover {
-            background: #f8fafc;
-        }
-
-        .dark .dev-note-item:hover {
-            background: #262626;
-        }
-
-        .dev-notes-modal {
-            position: fixed;
-            top: 0;
-            right: -600px;
-            width: 600px;
-            height: 100vh;
-            background: white;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
-            transition: right 0.3s ease;
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            padding: 24px;
-            overflow-y: auto;
-        }
-
-        .dark .dev-notes-modal {
-            background: #171717;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .dev-notes-modal.open {
-            right: 0;
-        }
-
-        .dev-note-content {
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-    </style>
 </head>
 
-<body
-    class="flex flex-col items-center min-h-screen p-8 bg-[#fdfdfd] text-[#1a1a1a] dark:bg-black dark:text-neutral-200 transition-colors duration-300">
+<body>
 
-    <div class="w-full max-w-xl">
-        <header class="mb-10 flex justify-between items-end">
-            <div>
-                <h1 class="text-2xl font-semibold tracking-tight uppercase">Intent Logs</h1>
-                <p id="syncStatus" class="metadata-text text-emerald-600 mt-1">Cloud Sync Active</p>
-            </div>
-            <button onclick="toggleTheme()"
-                class="bg-gray-100 dark:bg-neutral-900 text-gray-500 hover:text-black dark:hover:text-white p-2 rounded-full border border-gray-200 dark:border-neutral-800 transition">
-                <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
-                <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
-            </button>
+    <!-- Tab Bar -->
+    <nav class="tab-bar">
+        <div class="tab-item active" onclick="switchTab('logs')">
+            <i data-lucide="list" class="w-6 h-6"></i>
+            <span>Logs</span>
+        </div>
+        <div class="tab-item" onclick="switchTab('settings')">
+            <i data-lucide="settings-2" class="w-6 h-6"></i>
+            <span>Settings</span>
+        </div>
+    </nav>
+
+    <!-- VIEW: LOGS -->
+    <div id="view-logs" class="view active">
+        <header class="ios-header flex justify-between items-end pb-2">
+            <a href="index.html" class="text-sm font-medium text-orange-500 mb-1 flex items-center gap-1">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i> Home
+            </a>
         </header>
+        <div class="px-4 pb-2">
+            <h1 class="large-title">Intent Logs</h1>
+        </div>
 
-        <section class="glass p-6 rounded-3xl shadow-sm mb-10 border border-gray-100 dark:border-neutral-900">
-            <input type="text" id="intentInput" placeholder="Enter your intent..."
-                class="w-full bg-transparent text-xl outline-none border-b border-gray-100 pb-3 focus:border-black dark:border-neutral-800 dark:focus:border-white transition-all"
-                onkeypress="if(event.key === 'Enter') saveIntent()">
-            <div class="flex justify-between items-center mt-4">
-                <input type="text" id="tagInput" placeholder="#Tag"
-                    class="bg-transparent text-xs outline-none text-gray-400"
+        <!-- Tag Filter / Input -->
+        <div class="ios-search-container">
+            <div class="ios-search-bar mb-2">
+                <i data-lucide="pen-tool" class="w-4 h-4"></i>
+                <input type="text" id="logInput" class="ios-search-input" placeholder="What is your intent?"
                     onkeypress="if(event.key === 'Enter') saveIntent()">
+            </div>
+            <div class="flex gap-2 mb-4">
+                <div class="bg-gray-200 dark:bg-zinc-800 rounded-lg px-2 py-1 flex items-center gap-1">
+                    <span class="text-gray-500 text-xs">#</span>
+                    <input type="text" id="tagInput" placeholder="tag" class="bg-transparent text-sm w-16 outline-none"
+                        onkeypress="if(event.key === 'Enter') saveIntent()">
+                </div>
                 <button onclick="saveIntent()"
-                    class="bg-black text-white px-5 py-2 rounded-full text-xs font-medium hover:bg-gray-800 dark:bg-white dark:text-black dark:hover:bg-gray-200 transition">Log
-                    Intent</button>
+                    class="bg-orange-500 text-white rounded-lg px-4 text-sm font-semibold">Log</button>
             </div>
-        </section>
-
-        <div id="logContainer" class="space-y-3"></div>
-    </div>
-
-    <!-- Dev Notes (only visible in localhost) -->
-    <button id="devNotesBtn" class="dev-notes-btn" onclick="toggleDevNotes()" style="display: none;">
-        <i data-lucide="clipboard" class="w-6 h-6"></i>
-    </button>
-
-    <div id="devNotesPanel" class="dev-notes-panel">
-        <div class="p-6 border-b border-gray-200 dark:border-neutral-800">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold">Dev Notes</h2>
-                <button onclick="toggleDevNotes()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
-            </div>
-            <button onclick="openDevNoteModal()"
-                class="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition mb-2">
-                + New Note
-            </button>
-            <button onclick="copyAllNotes()"
-                class="w-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-xs font-medium transition">
-                📋 Copy All for Claude
-            </button>
-        </div>
-        <div id="devNotesContainer" class="flex-1 overflow-y-auto"></div>
-    </div>
-
-    <!-- Dev Notes Modal -->
-    <div id="devNotesModal" class="dev-notes-modal">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">Add Dev Note</h3>
-            <button onclick="closeDevNoteModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
         </div>
 
-        <select id="noteType"
-            class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
-            <option value="bug">🐛 Bug</option>
-            <option value="feature">✨ Feature</option>
-            <option value="note">📝 Note</option>
-        </select>
+        <div class="px-4 pb-2">
+            <span id="syncStatus" class="text-xs text-gray-400 font-medium">Syncing...</span>
+        </div>
 
-        <textarea id="noteInput" placeholder="Enter your note...
+        <div id="logList" class="inset-list mt-2">
+            <!-- Logs injected here -->
+        </div>
+    </div>
 
-Supports:
-- Bullet points (use - or *)
-- Numbered lists (use 1. 2. 3.)
-- Multiple lines"
-            class="flex-1 w-full border rounded-lg px-3 py-2 outline-none focus:border-amber-500 dark:bg-neutral-800 dark:border-neutral-700 dark:focus:border-amber-500 resize-none font-mono text-sm"
-            onkeydown="if(event.key === 'Enter' && (event.metaKey || event.ctrlKey)) saveDevNote()"></textarea>
-
-        <div class="flex gap-2 mt-4">
-            <button onclick="saveDevNote()"
-                class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition">
-                Save Note (⌘/Ctrl + Enter)
-            </button>
-            <button onclick="closeDevNoteModal()"
-                class="px-6 bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 py-2 rounded-lg text-sm font-medium transition">
-                Cancel
-            </button>
+    <!-- VIEW: SETTINGS -->
+    <div id="view-settings" class="view">
+        <header class="ios-header">
+            <h1 class="large-title">Settings</h1>
+        </header>
+        <div class="inset-list mt-4">
+            <div class="list-row" onclick="toggleTheme()">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-md bg-gray-500 flex items-center justify-center text-white">
+                        <i data-lucide="moon" class="w-5 h-5"></i>
+                    </div>
+                    <span class="text-base font-medium">Dark Mode</span>
+                </div>
+                <!-- Toggle -->
+                <div class="w-12 h-7 bg-gray-300 dark:bg-green-500 rounded-full relative transition-colors">
+                    <div
+                        class="w-6 h-6 bg-white rounded-full shadow absolute top-0.5 left-0.5 dark:translate-x-5 transition-transform">
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // Environment-based configuration
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
-
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname.startsWith('192.168.') || window.location.hostname === '127.0.0.1';
         const SUPABASE_CONFIG = isLocalhost ? {
             url: 'https://jatwmjrybucdpttbigoi.supabase.co',
             key: 'sb_publishable_egBQSs0z5JvbYe68eqt5rA_rKN31Fxz'
@@ -256,35 +270,54 @@ Supports:
             url: 'https://iqlndhxlkjmqavpllhcl.supabase.co',
             key: 'sb_publishable_sE922DO0e6S-O-K4s0c9yg_o_5p95Ji'
         };
+        const supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
 
-        const SUPABASE_URL = SUPABASE_CONFIG.url;
-        const SUPABASE_KEY = SUPABASE_CONFIG.key;
-        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        console.log(`Environment: ${isLocalhost ? 'DEV' : 'PROD'} | Database: ${SUPABASE_URL}`);
+        function switchTab(tab) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(`view-${tab}`).classList.add('active');
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            const tabs = document.querySelectorAll('.tab-item');
+            if (tab === 'logs') tabs[0].classList.add('active');
+            if (tab === 'settings') tabs[1].classList.add('active');
+        }
 
         async function fetchIntents() {
-            const { data, error } = await supabaseClient
-                .from('intents')
-                .select('*')
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Supabase error:', error);
-                const statusEl = document.getElementById('syncStatus');
-                statusEl.innerText = 'Sync Error';
-                statusEl.classList.remove('text-emerald-600');
-                statusEl.classList.add('text-red-500');
+            const { data, error } = await supabaseClient.from('intents').select('*').order('created_at', { ascending: false });
+            if (!error) {
+                renderLogs(data || []);
+                document.getElementById('syncStatus').innerText = 'Cloud Sync Active';
+                document.getElementById('syncStatus').classList.add('text-green-500');
             } else {
-                renderLogs(data);
-                const statusEl = document.getElementById('syncStatus');
-                statusEl.innerText = 'Cloud Sync Active';
-                statusEl.classList.add('text-emerald-600');
-                statusEl.classList.remove('text-red-500');
+                document.getElementById('syncStatus').innerText = 'Sync Error';
+                document.getElementById('syncStatus').classList.add('text-red-500');
             }
         }
 
+        function renderLogs(logs) {
+            const list = document.getElementById('logList');
+            if (logs.length === 0) {
+                list.innerHTML = `<div class="p-4 text-center text-gray-400">No logs yet.</div>`;
+                return;
+            }
+            list.innerHTML = logs.map(log => `
+                <div class="log-item group">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-base font-medium text-gray-900 dark:text-white">${log.text}</span>
+                        <div class="flex items-center gap-2">
+                             ${log.tag ? `<span class="bg-gray-100 dark:bg-zinc-800 text-xs px-1.5 py-0.5 rounded text-gray-500">${log.tag}</span>` : ''}
+                             <span class="text-xs text-gray-400">${log.date} ${log.time}</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteIntent('${log.id}')" class="text-gray-300 hover:text-red-500">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
         async function saveIntent() {
-            const text = document.getElementById('intentInput').value.trim();
+            const text = document.getElementById('logInput').value.trim();
             const tag = document.getElementById('tagInput').value.trim();
             if (!text) return;
 
@@ -295,163 +328,25 @@ Supports:
                 date: new Date().toLocaleDateString()
             };
 
-            const { error } = await supabaseClient.from('intents').insert([entry]);
-            if (!error) {
-                document.getElementById('intentInput').value = '';
-                document.getElementById('tagInput').value = '';
+            await supabaseClient.from('intents').insert([entry]);
+            document.getElementById('logInput').value = '';
+            fetchIntents();
+        }
+
+        async function deleteIntent(id) {
+            if (confirm("Delete?")) {
+                await supabaseClient.from('intents').delete().eq('id', id);
                 fetchIntents();
             }
         }
 
-        async function deleteIntent(id) {
-            if (!confirm("Delete log?")) return;
-            await supabaseClient.from('intents').delete().eq('id', id);
-            fetchIntents();
-        }
-
-        function renderLogs(logs) {
-            const container = document.getElementById('logContainer');
-            container.innerHTML = logs.map(log => `
-                <div class="glass p-5 rounded-2xl flex justify-between items-center group">
-                    <div>
-                        <div class="flex items-center gap-3">
-                            <p class="text-sm font-medium text-gray-700 dark:text-neutral-300">${log.text}</p>
-                            ${log.tag ? `<span class="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-gray-500 dark:bg-neutral-800 dark:text-neutral-500">${log.tag}</span>` : ''}
-                        </div>
-                        <p class="metadata-text mt-1">${log.date} • ${log.time}</p>
-                    </div>
-                    <button onclick="deleteIntent('${log.id}')" class="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            `).join('');
-            lucide.createIcons();
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
         }
 
         fetchIntents();
-
-        function toggleTheme() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-            }
-        }
-
-        // Dev Notes Functions (only for localhost)
-        function toggleDevNotes() {
-            document.getElementById('devNotesPanel').classList.toggle('open');
-        }
-
-        function openDevNoteModal() {
-            document.getElementById('devNotesModal').classList.add('open');
-            document.getElementById('noteInput').focus();
-            lucide.createIcons();
-        }
-
-        function closeDevNoteModal() {
-            document.getElementById('devNotesModal').classList.remove('open');
-            document.getElementById('noteInput').value = '';
-        }
-
-        async function saveDevNote() {
-            const text = document.getElementById('noteInput').value.trim();
-            const type = document.getElementById('noteType').value;
-            if (!text) return;
-
-            const page = window.location.pathname.split('/').pop() || 'index.html';
-            const entry = {
-                text,
-                type,
-                page,
-                timestamp: new Date().toISOString()
-            };
-
-            await supabaseClient.from('dev_notes').insert([entry]);
-            closeDevNoteModal();
-            fetchDevNotes();
-        }
-
-        async function fetchDevNotes() {
-            const { data, error } = await supabaseClient
-                .from('dev_notes')
-                .select('*')
-                .order('timestamp', { ascending: false });
-
-            if (!error && data) {
-                renderDevNotes(data);
-            }
-        }
-
-        function renderDevNotes(notes) {
-            const container = document.getElementById('devNotesContainer');
-            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
-
-            container.innerHTML = notes.map(note => `
-                <div class="dev-note-item">
-                    <div class="flex justify-between items-start mb-1">
-                        <span class="text-xs font-semibold text-amber-600 dark:text-amber-500">${typeEmoji[note.type]} ${note.type.toUpperCase()}</span>
-                        <button onclick="deleteDevNote('${note.id}')" class="text-gray-300 hover:text-red-500 text-xs">
-                            <i data-lucide="trash-2" class="w-3 h-3"></i>
-                        </button>
-                    </div>
-                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-1 dev-note-content">${escapeHtml(note.text)}</p>
-                    <div class="flex gap-2 text-xs text-gray-400">
-                        <span>${note.page}</span>
-                        <span>•</span>
-                        <span>${new Date(note.timestamp).toLocaleString()}</span>
-                    </div>
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        async function deleteDevNote(id) {
-            await supabaseClient.from('dev_notes').delete().eq('id', id);
-            fetchDevNotes();
-        }
-
-        async function copyAllNotes() {
-            const { data, error } = await supabaseClient
-                .from('dev_notes')
-                .select('*')
-                .order('timestamp', { ascending: false });
-
-            if (error || !data || data.length === 0) {
-                alert('No notes to copy');
-                return;
-            }
-
-            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
-            const formatted = data.map(note => {
-                const date = new Date(note.timestamp).toLocaleString();
-                return `${typeEmoji[note.type]} **${note.type.toUpperCase()}** [${note.page}] - ${date}\n${note.text}\n`;
-            }).join('\n---\n\n');
-
-            const fullText = `# Dev Notes (${data.length} total)\n\n${formatted}`;
-
-            try {
-                await navigator.clipboard.writeText(fullText);
-                alert(`Copied ${data.length} notes to clipboard! Paste them in your message to Claude.`);
-            } catch (err) {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy. Please try again.');
-            }
-        }
-
-        // Show dev notes button only on localhost
-        if (isLocalhost) {
-            document.getElementById('devNotesBtn').style.display = 'flex';
-            fetchDevNotes();
-        }
+        lucide.createIcons();
     </script>
 </body>
 
