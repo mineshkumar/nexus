@@ -3,429 +3,551 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <title>Habit Flow Cloud</title>
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Nexus</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✅</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                    fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', 'San Francisco', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'sans-serif'] },
+                    colors: {
+                        ios: {
+                            bg: '#F2F2F7',
+                            'bg-dark': '#000000',
+                            card: '#FFFFFF',
+                            'card-dark': '#1C1C1E',
+                            blue: '#007AFF',
+                            gray: '#8E8E93',
+                            separator: '#C6C6C8',
+                            'separator-dark': '#38383A'
+                        }
+                    }
                 }
             }
         }
     </script>
+    <style>
+        /* iOS Reset & Base */
+        body {
+            background-color: #F2F2F7;
+            color: #000000;
+            -webkit-tap-highlight-color: transparent;
+            padding-bottom: calc(83px + env(safe-area-inset-bottom));
+            /* 49px tab bar + 34px padding */
+        }
+
+        .dark body {
+            background-color: #000000;
+            color: #FFFFFF;
+        }
+
+        /* Large Title Header */
+        .ios-header {
+            padding: 16px 16px 8px 16px;
+            padding-top: max(16px, env(safe-area-inset-top));
+            background: transparent;
+        }
+
+        .large-title {
+            font-size: 34px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: Semi-Bold;
+        }
+
+        /* Inset Grouped List */
+        .inset-list {
+            margin: 0 16px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #FFFFFF;
+        }
+
+        .dark .inset-list {
+            background: #1C1C1E;
+        }
+
+        .list-row {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 0.5px solid #C6C6C8;
+            transition: background 0.2s;
+        }
+
+        .dark .list-row {
+            border-bottom: 0.5px solid #38383A;
+        }
+
+        .list-row:last-child {
+            border-bottom: none;
+        }
+
+        .list-row:active {
+            background: #E5E5EA;
+        }
+
+        .dark .list-row:active {
+            background: #2C2C2E;
+        }
+
+        /* Tab Bar */
+        .tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: calc(49px + env(safe-area-inset-bottom));
+            background: rgba(249, 249, 249, 0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding-top: 8px;
+            z-index: 1000;
+        }
+
+        .dark .tab-bar {
+            background: rgba(20, 20, 20, 0.94);
+            border-top: 0.5px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 60px;
+            color: #8E8E93;
+            font-size: 10px;
+            font-weight: 500;
+            gap: 2px;
+            cursor: pointer;
+        }
+
+        .tab-item.active {
+            color: #007AFF;
+        }
+
+        /* Checkbox Circle */
+        .check-circle {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid #C7C7CC;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .check-circle.checked {
+            background: #007AFF;
+            border-color: #007AFF;
+        }
+
+        .dark .check-circle {
+            border-color: #48484A;
+        }
+
+        .dark .check-circle.checked {
+            border-color: #0A84FF;
+            background: #0A84FF;
+        }
+
+        /* Modal Sheet */
+        .sheet-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 2000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .sheet-overlay.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .sheet {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #fff;
+            border-radius: 20px 20px 0 0;
+            padding: 24px;
+            padding-bottom: calc(24px + env(safe-area-inset-bottom));
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            z-index: 2001;
+        }
+
+        .dark .sheet {
+            background: #1C1C1E;
+        }
+
+        .sheet-overlay.open .sheet {
+            transform: translateY(0);
+        }
+
+        .drag-handle {
+            width: 36px;
+            height: 5px;
+            background: #D1D1D6;
+            border-radius: 3px;
+            margin: -12px auto 20px auto;
+        }
+
+        .dark .drag-handle {
+            background: #48484A;
+        }
+
+        /* View Transitions */
+        .view {
+            display: none;
+            animation: fadeIn 0.3s ease;
+            padding-bottom: 100px;
+            /* Base padding */
+        }
+
+        .view.active {
+            display: block;
+        }
+
+        /* Detail View (Slide Over) */
+        #view-detail {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #F2F2F7;
+            z-index: 3000;
+            /* Above tabs */
+            transform: translateX(100%);
+            transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+            overflow-y: auto;
+            display: block;
+            /* Always rendered but offscreen */
+        }
+
+        .dark #view-detail {
+            background: #000000;
+        }
+
+        #view-detail.open {
+            transform: translateX(0);
+        }
+
+        /* Calendar Grid */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            padding: 4px;
+        }
+
+        .cal-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 13px;
+            border-radius: 50%;
+            color: #000;
+        }
+
+        .dark .cal-day {
+            color: #fff;
+        }
+
+        .cal-day.header {
+            font-size: 11px;
+            font-weight: 600;
+            color: #8E8E93;
+            aspect-ratio: auto;
+            height: 20px;
+        }
+
+        .cal-day.filled {
+            background: #34C759;
+            color: white;
+            font-weight: 600;
+        }
+
+        .cal-day.empty {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .dark .cal-day.empty {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        /* Mini Timeline overlay on Habits */
+        .dots-row {
+            display: flex;
+            gap: 3px;
+            margin-top: 4px;
+        }
+
+        .dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #E5E5EA;
+        }
+
+        .dark .dot {
+            background: #3A3A3C;
+        }
+
+        .dot.filled {
+            background: #34C759;
+        }
+    </style>
     <script>
+        // Check local theme
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
         } else {
             document.documentElement.classList.remove('dark');
         }
     </script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-            background: #fafafa;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        .dark body {
-            background: #0a0a0a;
-        }
-
-        /* Mobile-first grid: 10 columns on mobile, 20 on desktop */
-        .days-grid {
-            display: grid;
-            grid-template-columns: repeat(10, minmax(0, 1fr));
-            gap: 4px;
-        }
-
-        @media (min-width: 480px) {
-            .days-grid {
-                grid-template-columns: repeat(12, minmax(0, 1fr));
-                gap: 5px;
-            }
-        }
-
-        @media (min-width: 640px) {
-            .days-grid {
-                grid-template-columns: repeat(20, minmax(0, 1fr));
-                gap: 5px;
-            }
-        }
-
-        /* Touch-friendly cells */
-        .cell-check {
-            aspect-ratio: 1;
-            min-width: 0;
-            border-radius: 5px;
-            background: #e8edf2;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 9px;
-            font-weight: 600;
-            color: #9ca3af;
-            transition: transform 0.15s ease, background 0.15s ease;
-            -webkit-tap-highlight-color: transparent;
-            user-select: none;
-        }
-
-        /* Larger tap targets on mobile */
-        @media (max-width: 639px) {
-            .cell-check {
-                font-size: 10px;
-                border-radius: 6px;
-            }
-        }
-
-        /* Softer colors for reduced eye strain */
-        .dark .cell-check {
-            background: #1f1f1f;
-            color: #4a4a4a;
-        }
-
-        .cell-check.active {
-            background: #34d399;
-            color: #ffffff;
-        }
-
-        .dark .cell-check.active {
-            background: #10b981;
-            color: #ffffff;
-        }
-
-        /* Touch feedback instead of hover on mobile */
-        .cell-check:active {
-            transform: scale(0.92);
-        }
-
-        @media (hover: hover) {
-            .cell-check:hover:not(.active) {
-                background: #dce4eb;
-            }
-
-            .dark .cell-check:hover:not(.active) {
-                background: #2a2a2a;
-            }
-        }
-
-        /* Habit card styles - softer shadows, better spacing */
-        .habit-card {
-            padding: 16px;
-            background: white;
-            border-radius: 14px;
-            border: 1px solid #eef2f6;
-            transition: all 0.2s ease;
-        }
-
-        @media (min-width: 640px) {
-            .habit-card {
-                padding: 20px;
-                border-radius: 16px;
-            }
-        }
-
-        .dark .habit-card {
-            background: #141414;
-            border-color: #1f1f1f;
-        }
-
-        @media (hover: hover) {
-            .habit-card:hover {
-                border-color: #e2e8f0;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-            }
-
-            .dark .habit-card:hover {
-                border-color: #262626;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-            }
-        }
-
-        /* Drag handle - always visible on mobile for touch drag */
-        .drag-handle {
-            cursor: grab;
-            opacity: 0.3;
-            transition: opacity 0.2s;
-            padding: 8px;
-            margin: -8px;
-        }
-
-        @media (hover: hover) {
-            .drag-handle {
-                opacity: 0;
-            }
-
-            .habit-card:hover .drag-handle {
-                opacity: 0.5;
-            }
-
-            .drag-handle:hover {
-                opacity: 1 !important;
-            }
-        }
-
-        .habit-card.sortable-ghost {
-            opacity: 0.4;
-            background: #f8fafc;
-        }
-
-        .dark .habit-card.sortable-ghost {
-            background: #1a1a1a;
-        }
-
-        .habit-card.sortable-drag {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-        }
-
-        /* Tooltip - only show on devices with hover (desktop) */
-        .cell-check {
-            position: relative;
-        }
-
-        @media (hover: hover) {
-            .cell-check::after {
-                content: attr(data-tooltip);
-                position: absolute;
-                bottom: calc(100% + 8px);
-                left: 50%;
-                transform: translateX(-50%);
-                background: #1f2937;
-                color: white;
-                padding: 6px 10px;
-                border-radius: 6px;
-                font-size: 11px;
-                white-space: nowrap;
-                opacity: 0;
-                pointer-events: none;
-                transition: opacity 0.2s;
-                z-index: 10;
-            }
-
-            .cell-check:hover::after {
-                opacity: 1;
-            }
-
-            .dark .cell-check::after {
-                background: #374151;
-            }
-        }
-
-        /* Safe area padding for notched iPhones */
-        @supports (padding: max(0px)) {
-            body {
-                padding-left: max(16px, env(safe-area-inset-left));
-                padding-right: max(16px, env(safe-area-inset-right));
-                padding-bottom: max(16px, env(safe-area-inset-bottom));
-            }
-        }
-
-        /* Dev Notes Styles */
-        .dev-notes-btn {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: #f59e0b;
-            color: white;
-            border: none;
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.3s;
-            z-index: 1000;
-        }
-
-        .dev-notes-btn:hover {
-            transform: scale(1.1);
-            box-shadow: 0 6px 16px rgba(245, 158, 11, 0.6);
-        }
-
-        .dev-notes-panel {
-            position: fixed;
-            top: 0;
-            right: -400px;
-            width: 400px;
-            height: 100vh;
-            background: white;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
-            transition: right 0.3s ease;
-            z-index: 999;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .dark .dev-notes-panel {
-            background: #171717;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .dev-notes-panel.open {
-            right: 0;
-        }
-
-        .dev-note-item {
-            padding: 12px;
-            border-bottom: 1px solid #f1f5f9;
-            transition: background 0.2s;
-        }
-
-        .dark .dev-note-item {
-            border-bottom: 1px solid #262626;
-        }
-
-        .dev-note-item:hover {
-            background: #f8fafc;
-        }
-
-        .dark .dev-note-item:hover {
-            background: #262626;
-        }
-
-        .dev-notes-modal {
-            position: fixed;
-            top: 0;
-            right: -600px;
-            width: 600px;
-            height: 100vh;
-            background: white;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.1);
-            transition: right 0.3s ease;
-            z-index: 1001;
-            display: flex;
-            flex-direction: column;
-            padding: 24px;
-            overflow-y: auto;
-        }
-
-        .dark .dev-notes-modal {
-            background: #171717;
-            box-shadow: -4px 0 20px rgba(0, 0, 0, 0.5);
-        }
-
-        .dev-notes-modal.open {
-            right: 0;
-        }
-
-        .dev-note-content {
-            white-space: pre-wrap;
-            word-break: break-word;
-        }
-    </style>
 </head>
 
-<body
-    class="px-4 py-6 sm:p-8 flex flex-col items-center bg-white text-slate-800 dark:bg-[#0a0a0a] dark:text-neutral-200 transition-colors duration-300 min-h-screen">
-    <div class="w-full max-w-2xl">
-        <header class="mb-8 sm:mb-12 flex justify-between items-center">
-            <h1 class="text-base sm:text-lg font-medium text-gray-400 uppercase tracking-widest dark:text-neutral-500">
-                <span class="text-gray-900 dark:text-white">Habits</span>
-            </h1>
-            <div class="flex items-center gap-3">
-                <span id="status"
-                    class="text-[10px] uppercase font-semibold text-emerald-600 dark:text-emerald-500">Syncing...</span>
-                <button onclick="toggleTheme()"
-                    class="bg-gray-100 dark:bg-neutral-900 text-gray-500 hover:text-black dark:hover:text-white p-2.5 rounded-full border border-gray-200 dark:border-neutral-800 transition active:scale-95">
-                    <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
-                    <i data-lucide="sun" class="w-4 h-4 block dark:hidden"></i>
-                </button>
-            </div>
+<body>
+
+    <!-- Tab Bar -->
+    <nav class="tab-bar">
+        <div class="tab-item active" onclick="switchTab('habits')">
+            <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+            <span>Habits</span>
+        </div>
+        <div class="tab-item" onclick="switchTab('journal')">
+            <i data-lucide="book" class="w-6 h-6"></i>
+            <span>Journal</span>
+        </div>
+        <div class="tab-item" onclick="switchTab('settings')">
+            <i data-lucide="settings-2" class="w-6 h-6"></i>
+            <span>Settings</span>
+        </div>
+    </nav>
+
+    <!-- VIEW: HABITS -->
+    <div id="view-habits" class="view active">
+        <header class="ios-header flex justify-between items-end">
+            <h1 class="large-title">Habits</h1>
+            <button onclick="openAddHabit()" class="text-ios-blue text-lg p-2 active:opacity-50 transition-opacity">
+                <i data-lucide="plus" class="w-7 h-7"></i>
+            </button>
         </header>
 
-        <section class="mb-8 sm:mb-12 flex gap-3">
-            <input type="text" id="habitInput" placeholder="New habit..."
-                class="flex-1 bg-transparent text-lg sm:text-xl outline-none border-b border-gray-200 pb-2 focus:border-emerald-500 font-light dark:border-neutral-800 dark:focus:border-emerald-500"
-                onkeypress="if(event.key === 'Enter') addHabit()">
-            <!-- Only show + button on mobile (touch devices) -->
-            <button onclick="addHabit()" class="text-emerald-500 active:scale-95 transition p-1 sm:hidden">
-                <i data-lucide="plus-circle" class="w-7 h-7"></i>
-            </button>
-        </section>
+        <div class="px-4 pb-2">
+            <span id="status" class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Syncing...</span>
+        </div>
 
-        <div id="habitContainer" class="space-y-3 sm:space-y-4"></div>
+        <div id="habitList" class="inset-list mt-2">
+            <!-- Habit Rows Injected Here -->
+        </div>
     </div>
 
-    <!-- Dev Notes (only visible in localhost) -->
-    <button id="devNotesBtn" class="dev-notes-btn" onclick="toggleDevNotes()" style="display: none;">
-        <i data-lucide="clipboard" class="w-6 h-6"></i>
-    </button>
+    <!-- VIEW: JOURNAL (Dev Notes) -->
+    <div id="view-journal" class="view">
+        <header class="ios-header flex justify-between items-end">
+            <h1 class="large-title">Journal</h1>
+            <button onclick="openDevNoteModal()" class="text-ios-blue text-lg p-2 active:opacity-50 transition-opacity">
+                <!-- iOS Compose Icon -->
+                <i data-lucide="square-pen" class="w-6 h-6"></i>
+            </button>
+        </header>
 
-    <div id="devNotesPanel" class="dev-notes-panel">
-        <div class="p-6 border-b border-gray-200 dark:border-neutral-800">
-            <div class="flex justify-between items-center mb-4">
-                <h2 class="text-lg font-semibold">Dev Notes</h2>
-                <button onclick="toggleDevNotes()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                </button>
+        <div class="px-4 pb-2">
+            <button onclick="copyAllNotes()" class="text-xs font-medium text-ios-blue">Copy All to Clipboard</button>
+        </div>
+
+        <div id="journalList" class="space-y-4 px-4 mt-2">
+            <!-- Dev Notes Injected Here -->
+        </div>
+    </div>
+
+    <!-- VIEW: SETTINGS -->
+    <div id="view-settings" class="view">
+        <header class="ios-header">
+            <h1 class="large-title">Settings</h1>
+        </header>
+
+        <div class="inset-list mt-4">
+            <div class="list-row" onclick="toggleTheme()">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-md bg-gray-500 flex items-center justify-center text-white">
+                        <i data-lucide="moon" class="w-5 h-5"></i>
+                    </div>
+                    <span class="text-base font-medium">Dark Mode</span>
+                </div>
+                <!-- Toggle Switch Simulation -->
+                <div id="themeToggle"
+                    class="w-12 h-7 bg-gray-300 dark:bg-green-500 rounded-full relative transition-colors duration-200">
+                    <div
+                        class="w-6 h-6 bg-white rounded-full shadow absolute top-0.5 left-0.5 transition-transform duration-200 transform dark:translate-x-5">
+                    </div>
+                </div>
             </div>
-            <button onclick="openDevNoteModal()"
-                class="w-full bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition mb-2">
-                + New Note
-            </button>
-            <button onclick="copyAllNotes()"
-                class="w-full bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-xs font-medium transition">
-                📋 Copy All for Claude
-            </button>
+
+            <div class="list-row">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-md bg-blue-500 flex items-center justify-center text-white">
+                        <i data-lucide="database" class="w-5 h-5"></i>
+                    </div>
+                    <span class="text-base font-medium">Sync Status</span>
+                </div>
+                <span id="settingsStatus" class="text-gray-500 text-sm">Checking...</span>
+            </div>
         </div>
-        <div id="devNotesContainer" class="flex-1 overflow-y-auto"></div>
+
+        <p class="text-center text-gray-400 text-xs mt-6">Version 1.0 (Mobile Redesign)</p>
     </div>
 
-    <!-- Dev Notes Modal -->
-    <div id="devNotesModal" class="dev-notes-modal">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">Add Dev Note</h3>
-            <button onclick="closeDevNoteModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
-                <i data-lucide="x" class="w-5 h-5"></i>
+    <!-- VIEW: DETAIL (Push) -->
+    <div id="view-detail">
+        <header
+            class="ios-header flex items-center gap-1 sticky top-0 bg-[#F2F2F7]/90 dark:bg-black/90 backdrop-blur-md z-10 border-b border-gray-200/50 dark:border-white/10">
+            <button onclick="closeDetail()" class="flex items-center text-ios-blue text-lg p-2 -ml-2 active:opacity-50">
+                <i data-lucide="chevron-left" class="w-7 h-7"></i>
+                <span>Habits</span>
             </button>
+        </header>
+
+        <div class="px-4 pb-2 pt-2">
+            <h1 id="detailTitle" class="large-title">Habit Name</h1>
         </div>
 
-        <select id="noteType"
-            class="w-full mb-3 text-sm border rounded px-3 py-2 dark:bg-neutral-800 dark:border-neutral-700">
-            <option value="bug">🐛 Bug</option>
-            <option value="feature">✨ Feature</option>
-            <option value="note">📝 Note</option>
-        </select>
+        <!-- Stats -->
+        <h3 class="px-4 pt-4 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Statistics</h3>
+        <div class="inset-list">
+            <div class="list-row">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="flame" class="w-5 h-5 text-orange-500"></i>
+                    <span class="text-base font-medium">Current Streak</span>
+                </div>
+                <span id="detailStreak" class="text-base text-gray-500">0 days</span>
+            </div>
+            <div class="list-row">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="target" class="w-5 h-5 text-blue-500"></i>
+                    <span class="text-base font-medium">Total Completions</span>
+                </div>
+                <span id="detailTotal" class="text-base text-gray-500">0</span>
+            </div>
+            <div class="list-row">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="calendar-check" class="w-5 h-5 text-green-500"></i>
+                    <span class="text-base font-medium">Consistency</span>
+                </div>
+                <span id="detailRate" class="text-base text-gray-500">0%</span>
+            </div>
+        </div>
 
-        <textarea id="noteInput" placeholder="Enter your note...
+        <!-- Calendar -->
+        <h3 class="px-4 pt-6 pb-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">Calendar</h3>
+        <div class="inset-list p-4">
+            <div class="flex justify-between items-center mb-4">
+                <span id="calMonth" class="font-semibold text-lg">January</span>
+                <div class="flex gap-4">
+                    <button onclick="changeCalMonth(-1)" class="text-ios-blue"><i data-lucide="chevron-left"
+                            class="w-5 h-5"></i></button>
+                    <button onclick="changeCalMonth(1)" class="text-ios-blue"><i data-lucide="chevron-right"
+                            class="w-5 h-5"></i></button>
+                </div>
+            </div>
+            <div id="detailCalendar" class="calendar-grid">
+                <!-- Days injected here -->
+            </div>
+        </div>
 
-Supports:
-- Bullet points (use - or *)
-- Numbered lists (use 1. 2. 3.)
-- Multiple lines"
-            class="flex-1 w-full border rounded-lg px-3 py-2 outline-none focus:border-amber-500 dark:bg-neutral-800 dark:border-neutral-700 dark:focus:border-amber-500 resize-none font-mono text-sm"
-            onkeydown="if(event.key === 'Enter' && (event.metaKey || event.ctrlKey)) saveDevNote()"></textarea>
-
-        <div class="flex gap-2 mt-4">
-            <button onclick="saveDevNote()"
-                class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-lg text-sm font-medium transition">
-                Save Note (⌘/Ctrl + Enter)
-            </button>
-            <button onclick="closeDevNoteModal()"
-                class="px-6 bg-gray-100 hover:bg-gray-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 py-2 rounded-lg text-sm font-medium transition">
-                Cancel
+        <div class="px-4 mt-8 mb-12">
+            <button onclick="deleteCurrentHabit()"
+                class="w-full bg-white dark:bg-[#1C1C1E] text-red-500 font-medium py-3 rounded-xl shadow-sm border border-gray-100 dark:border-[#2C2C2E] active:scale-98 transition">
+                Delete Habit
             </button>
         </div>
     </div>
+
+    <!-- MODAL: ADD HABIT -->
+    <div id="sheet-habit" class="sheet-overlay">
+        <div class="absolute inset-0" onclick="closeSheet('sheet-habit')"></div>
+        <div class="sheet">
+            <div class="drag-handle"></div>
+            <div class="flex justify-between items-center mb-6">
+                <button onclick="closeSheet('sheet-habit')" class="text-ios-blue font-medium">Cancel</button>
+                <span class="font-semibold">New Habit</span>
+                <button onclick="addHabit()" class="text-ios-blue font-bold">Add</button>
+            </div>
+            <div class="bg-gray-100 dark:bg-zinc-800 rounded-xl px-4 py-3 flex items-center">
+                <input type="text" id="habitInput" placeholder="Name"
+                    class="bg-transparent w-full text-lg outline-none placeholder-gray-400">
+            </div>
+            <p class="text-gray-400 text-xs mt-3 px-2">Creates a new daily habit to track.</p>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD NOTE -->
+    <div id="sheet-note" class="sheet-overlay">
+        <div class="absolute inset-0" onclick="closeSheet('sheet-note')"></div>
+        <div class="sheet">
+            <div class="drag-handle"></div>
+            <div class="flex justify-between items-center mb-4">
+                <button onclick="closeSheet('sheet-note')" class="text-ios-blue font-medium">Cancel</button>
+                <span class="font-semibold">New Note</span>
+                <button onclick="saveDevNote()" class="text-ios-blue font-bold">Save</button>
+            </div>
+
+            <div class="space-y-3">
+                <div class="bg-gray-100 dark:bg-zinc-800 rounded-xl px-2">
+                    <select id="noteType" class="bg-transparent w-full p-3 text-base outline-none dark:text-white">
+                        <option value="note">📝 Note</option>
+                        <option value="bug">🐛 Bug</option>
+                        <option value="feature">✨ Feature</option>
+                    </select>
+                </div>
+                <div class="bg-gray-100 dark:bg-zinc-800 rounded-xl p-3">
+                    <textarea id="noteInput" rows="4" placeholder="What's on your mind?"
+                        class="bg-transparent w-full text-base outline-none dark:text-white resize-none"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script>
-        // Environment-based configuration
-        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
+        // --- LOGIC ---
 
+        // Config
+        const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.startsWith('192.168.');
         const SUPABASE_CONFIG = isLocalhost ? {
             url: 'https://jatwmjrybucdpttbigoi.supabase.co',
             key: 'sb_publishable_egBQSs0z5JvbYe68eqt5rA_rKN31Fxz'
@@ -433,28 +555,127 @@ Supports:
             url: 'https://iqlndhxlkjmqavpllhcl.supabase.co',
             key: 'sb_publishable_sE922DO0e6S-O-K4s0c9yg_o_5p95Ji'
         };
-
         const supabaseClient = supabase.createClient(SUPABASE_CONFIG.url, SUPABASE_CONFIG.key);
-        console.log(`Environment: ${isLocalhost ? 'DEV' : 'PROD'} | Database: ${SUPABASE_CONFIG.url}`);
+        console.log(`[iOS Mode] Env: ${isLocalhost ? 'DEV' : 'PROD'}`);
+
+        // Tab Switching
+        function switchTab(tabName) {
+            document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${tabName}`).classList.add('active');
+
+            document.querySelectorAll('.tab-item').forEach(el => el.classList.remove('active'));
+            // Find the tab item (simple hack: index mapping or search text)
+            // Simpler: pass `t` and adding logic? 
+            // Better: loop and match text content or icon?
+            // For now, re-querying by matching onclick
+            // Actually, let's just re-render icons if needed, but CSS .active handles color.
+            // Loop all tab items, finding the one with the correct switchTab call
+            const tabs = document.querySelectorAll('.tab-item');
+            if (tabName === 'habits') tabs[0].classList.add('active');
+            if (tabName === 'journal') tabs[1].classList.add('active');
+            if (tabName === 'settings') tabs[2].classList.add('active');
+
+            if (tabName === 'journal') fetchDevNotes();
+        }
+
+        // Sheet Logic
+        function openAddHabit() {
+            document.getElementById('sheet-habit').classList.add('open');
+            setTimeout(() => document.getElementById('habitInput').focus(), 100);
+        }
+        function openDevNoteModal() {
+            document.getElementById('sheet-note').classList.add('open');
+            setTimeout(() => document.getElementById('noteInput').focus(), 100);
+        }
+        function closeSheet(id) {
+            document.getElementById(id).classList.remove('open');
+            document.activeElement.blur();
+        }
+
+        // Habits Logic
+        let GLOBAL_HABITS = [];
 
         async function fetchHabits() {
             const { data, error } = await supabaseClient.from('habits').select('*').order('order', { ascending: true });
             const statusEl = document.getElementById('status');
+            const settingsStatus = document.getElementById('settingsStatus');
 
             if (error) {
-                console.error('Supabase error:', error);
-                console.error('Error details:', error.message, error.details, error.hint);
-                statusEl.innerText = 'Sync Error';
-                statusEl.classList.remove('text-emerald-600');
+                statusEl.innerText = 'Offline / Error';
                 statusEl.classList.add('text-red-500');
-                // Render empty state on error
-                renderHabits([]);
+                settingsStatus.innerText = 'Error';
             } else {
-                renderHabits(data || []);
+                GLOBAL_HABITS = data || [];
+                renderHabits(GLOBAL_HABITS);
                 statusEl.innerText = 'Synced';
-                statusEl.classList.add('text-emerald-600');
                 statusEl.classList.remove('text-red-500');
+                statusEl.classList.add('text-gray-400');
+                settingsStatus.innerText = 'Connected';
             }
+        }
+
+        function renderHabits(habits) {
+            const list = document.getElementById('habitList');
+            const today = new Date(); // Warning: using client date. Ideally use UTC or server date.
+
+            if (habits.length === 0) {
+                list.innerHTML = `<div class="p-8 text-center text-gray-400 text-sm">No habits yet.<br>Tap + to start.</div>`;
+                return;
+            }
+
+            list.innerHTML = habits.map(habit => {
+                const startDate = habit.created_at || new Date().toISOString();
+                // Calculate today indx relative to creation
+                // We'll trust the integer-based completions array again.
+                // We need to know "Today's index"
+
+                // Let's approximate: 
+                // dayIndex = Math.floor((now - created) / 86400000)
+                const createdAt = new Date(startDate);
+                const dayIndex = Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24));
+
+                const isDoneToday = habit.completions.includes(dayIndex);
+
+                // Generate last 10 dots
+                let dotsHTML = '';
+                for (let i = 9; i >= 0; i--) {
+                    const dIdx = dayIndex - i;
+                    const filled = dIdx >= 0 && habit.completions.includes(dIdx);
+                    // styling: standard dot vs today dot
+                    // If dIdx == dayIndex (today), maybe distinct? 
+                    // Let's just keep it simple dots
+                    dotsHTML += `<div class="dot ${filled ? 'filled' : ''}"></div>`;
+                }
+
+                return `
+                <div class="list-row group" data-id="${habit.id}">
+                    <div class="flex items-center gap-3 w-full" onclick="openDetail('${habit.id}')">
+                        <!-- Icon placeholder based on name hash or fixed -->
+                        <div class="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-500 flex items-center justify-center flex-shrink-0">
+                            <i data-lucide="activity" class="w-5 h-5"></i>
+                        </div>
+                        <div class="flex flex-col flex-1 min-w-0">
+                            <span class="font-medium text-[17px] truncate">${habit.name}</span>
+                            <div class="dots-row">
+                                ${dotsHTML}
+                            </div>
+                        </div>
+                         <!-- Arrow to indicate Navigation -->
+                        <i data-lucide="chevron-right" class="w-5 h-5 text-gray-300 dark:text-gray-600"></i>
+                    </div>
+                    
+                    <!-- Separate click area for Checkbox to avoid opening detail -->
+                    <div class="pl-4 border-l border-gray-100 dark:border-gray-800 ml-2" onclick="event.stopPropagation()">
+                         <div class="check-circle ${isDoneToday ? 'checked' : ''}" onclick="toggleToday('${habit.id}', ${dayIndex}, [${habit.completions}])">
+                            ${isDoneToday ? '<i data-lucide="check" class="w-4 h-4 text-white"></i>' : ''}
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+
+            // Add swipe delete or long press later
+            lucide.createIcons();
         }
 
         async function addHabit() {
@@ -463,230 +684,217 @@ Supports:
             await supabaseClient.from('habits').insert([{
                 name,
                 completions: [],
-                order: Math.floor(Date.now() / 1000),
+                order: Date.now(),
                 created_at: new Date().toISOString()
             }]);
             document.getElementById('habitInput').value = '';
+            closeSheet('sheet-habit');
             fetchHabits();
         }
 
-        function getDateForDay(startDate, dayIndex) {
-            const start = new Date(startDate);
-            const date = new Date(start);
-            date.setDate(start.getDate() + dayIndex);
-            return date;
+        // --- Detail View Logic ---
+        let currentDetailHabit = null;
+        let currentCalDate = new Date();
+
+        function openDetail(id) {
+            const habit = GLOBAL_HABITS.find(h => h.id === id);
+            if (!habit) return;
+            currentDetailHabit = habit;
+            currentCalDate = new Date(); // Reset to today
+
+            document.getElementById('detailTitle').innerText = habit.name;
+
+            // Stats
+            document.getElementById('detailStreak').innerText = calculateStreak(habit.completions) + ' days';
+            document.getElementById('detailTotal').innerText = habit.completions.length;
+            const daysSinceStart = Math.max(1, Math.floor((new Date() - new Date(habit.created_at)) / (1000 * 60 * 60 * 24)));
+            const rate = Math.round((habit.completions.length / daysSinceStart) * 100);
+            document.getElementById('detailRate').innerText = isNaN(rate) ? '0%' : rate + '%';
+
+            renderCalendar();
+            document.getElementById('view-detail').classList.add('open');
         }
 
-        function formatDate(date) {
-            const options = { weekday: 'short', month: 'short', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
+        function closeDetail() {
+            document.getElementById('view-detail').classList.remove('open');
+            fetchHabits();
         }
 
-        function formatStartDate(dateString) {
-            const date = new Date(dateString);
-            const options = { month: 'short', day: 'numeric' };
-            return date.toLocaleDateString('en-US', options);
-        }
+        function calculateStreak(completions) {
+            if (!completions || !completions.length) return 0;
+            // Determine "today" index relative to creation
+            const createdAt = new Date(currentDetailHabit.created_at);
+            const todayIdx = Math.floor((new Date() - createdAt) / (1000 * 60 * 60 * 24));
 
-        function initSortable() {
-            const container = document.getElementById('habitContainer');
-            if (container.sortableInstance) {
-                container.sortableInstance.destroy();
+            // 1. Filter out future dates and sort descending
+            const sorted = [...completions].filter(c => c <= todayIdx).sort((a, b) => b - a);
+            if (sorted.length === 0) return 0;
+
+            // 2. Check if streak is alive (today or yesterday must be present)
+            const latest = sorted[0];
+            if (latest < todayIdx - 1) return 0;
+
+            // 3. Count consecutive days
+            let streak = 1;
+            for (let i = 1; i < sorted.length; i++) {
+                if (sorted[i] === sorted[i - 1] - 1) {
+                    streak++;
+                } else {
+                    break;
+                }
             }
-            container.sortableInstance = Sortable.create(container, {
-                animation: 200,
-                handle: '.drag-handle',
-                ghostClass: 'sortable-ghost',
-                dragClass: 'sortable-drag',
-                onEnd: async function (evt) {
-                    const cards = document.querySelectorAll('.habit-card');
-                    for (let i = 0; i < cards.length; i++) {
-                        const id = cards[i].getAttribute('data-habit-id');
-                        await supabaseClient.from('habits').update({ order: i }).eq('id', id);
-                    }
-                }
-            });
+            return streak;
         }
 
-        async function toggleDay(habitId, dayIndex, currentCompletions) {
-            let newCompletions = [...currentCompletions];
-            const idx = newCompletions.indexOf(dayIndex);
-            if (idx > -1) newCompletions.splice(idx, 1);
-            else newCompletions.push(dayIndex);
+        function changeCalMonth(delta) {
+            currentCalDate.setMonth(currentCalDate.getMonth() + delta);
+            renderCalendar();
+        }
 
-            await supabaseClient.from('habits').update({ completions: newCompletions }).eq('id', habitId);
+        function renderCalendar() {
+            const container = document.getElementById('detailCalendar');
+            container.innerHTML = '';
+
+            const year = currentCalDate.getFullYear();
+            const month = currentCalDate.getMonth();
+            document.getElementById('calMonth').innerText = currentCalDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+            // Headers
+            ['S', 'M', 'T', 'W', 'T', 'F', 'S'].forEach(d => {
+                const el = document.createElement('div');
+                el.className = 'cal-day header';
+                el.innerText = d;
+                container.appendChild(el);
+            });
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+            // Empty slots
+            for (let i = 0; i < firstDay; i++) {
+                container.innerHTML += '<div></div>';
+            }
+
+            // Days
+            const createdAt = new Date(currentDetailHabit.created_at);
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const date = new Date(year, month, i);
+                const diffTime = date - createdAt;
+                const dayIndex = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+                const isFilled = dayIndex >= 0 && currentDetailHabit.completions.includes(dayIndex);
+                const isFuture = date > new Date();
+
+                const el = document.createElement('div');
+                el.className = `cal-day ${isFilled ? 'filled' : 'empty'}`;
+                el.innerText = i;
+                if (isFuture) el.style.opacity = '0.3';
+
+                container.appendChild(el);
+            }
+        }
+
+        async function deleteCurrentHabit() {
+            if (!confirm("Permanently delete this habit?")) return;
+            await supabaseClient.from('habits').delete().eq('id', currentDetailHabit.id);
+            closeDetail();
+        }
+
+        async function toggleToday(id, dayIdx, currentCompletions) {
+            // Optimistic Update
+            // Re-render handled by full fetch for now to be safe, or we manually toggle class
+            let newCompletions = [...currentCompletions];
+            const idx = newCompletions.indexOf(dayIdx);
+            if (idx > -1) newCompletions.splice(idx, 1);
+            else newCompletions.push(dayIdx);
+
+            await supabaseClient.from('habits').update({ completions: newCompletions }).eq('id', id);
             fetchHabits();
         }
 
-        function renderHabits(habits) {
-            const container = document.getElementById('habitContainer');
-            container.innerHTML = habits.map((habit, index) => {
-                // Use created_at or fallback to current date for older habits
-                const startDate = habit.created_at || new Date().toISOString();
-                const completedCount = habit.completions.length;
-                const progressPercent = Math.round((completedCount / 60) * 100);
+        // --- Journal Logic ---
+        async function fetchDevNotes() {
+            const { data, error } = await supabaseClient.from('dev_notes').select('*').order('timestamp', { ascending: false });
+            if (!error) renderJournal(data || []);
+        }
 
-                let gridHTML = '<div class="days-grid">';
-                for (let i = 0; i < 60; i++) {
-                    const isDone = habit.completions.includes(i);
-                    const cellDate = getDateForDay(startDate, i);
-                    const tooltip = formatDate(cellDate);
-                    gridHTML += `<div class="cell-check ${isDone ? 'active' : ''}" data-tooltip="${tooltip}" onclick="toggleDay('${habit.id}', ${i}, [${habit.completions}])">${i + 1}</div>`;
-                }
-                gridHTML += '</div>';
+        function renderJournal(notes) {
+            const container = document.getElementById('journalList');
+            if (notes.length === 0) {
+                container.innerHTML = `<div class="p-8 text-center text-gray-400 text-sm">No notes.</div>`;
+                return;
+            }
+            container.innerHTML = notes.map(note => {
+                const date = new Date(note.timestamp);
+                const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const dateStr = date.toLocaleDateString();
 
-                return `<div class="habit-card group" data-habit-id="${habit.id}">
-                    <div class="flex justify-between items-start mb-3 sm:mb-4">
-                        <div class="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                            <div class="drag-handle text-gray-400 dark:text-neutral-600 flex-shrink-0">
-                                <i data-lucide="grip-vertical" class="w-4 h-4"></i>
-                            </div>
-                            <div class="min-w-0 flex-1">
-                                <h3 class="text-sm font-semibold text-gray-900 dark:text-white tracking-tight truncate">${habit.name}</h3>
-                                <p class="text-[11px] text-gray-400 dark:text-neutral-500 mt-0.5">${formatStartDate(startDate)} · ${completedCount}/60</p>
-                            </div>
-                        </div>
-                        <button onclick="deleteHabit('${habit.id}')" class="text-gray-300 dark:text-neutral-600 hover:text-red-500 dark:hover:text-red-400 p-1.5 -mr-1.5 flex-shrink-0 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity active:scale-95">
-                            <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        </button>
+                let icon = 'sticky-note';
+                let color = 'text-gray-500';
+                if (note.type === 'bug') { icon = 'bug'; color = 'text-red-500'; }
+                if (note.type === 'feature') { icon = 'sparkles'; color = 'text-amber-500'; }
+
+                return `
+                <div class="bg-white dark:bg-[#1C1C1E] p-4 rounded-xl shadow-sm border border-gray-100 dark:border-[#2C2C2E] flex flex-col gap-2">
+                    <div class="flex justify-between items-start">
+                         <div class="flex items-center gap-2 ${color} font-medium text-sm uppercase tracking-wide">
+                            <i data-lucide="${icon}" class="w-4 h-4"></i>
+                            ${note.type}
+                         </div>
+                         <span class="text-xs text-gray-400">${dateStr} ${timeStr}</span>
                     </div>
-                    ${gridHTML}
-                </div>`;
+                    <p class="text-[17px] leading-relaxed dark:text-gray-200 whitespace-pre-wrap">${note.text}</p>
+                    <div class="flex justify-end pt-2">
+                        <button onclick="deleteNote('${note.id}')" class="text-xs text-red-500 font-medium px-2 py-1 bg-red-50 dark:bg-red-900/20 rounded">Delete</button>
+                    </div>
+                </div>
+                `;
             }).join('');
             lucide.createIcons();
-            initSortable();
-        }
-
-        async function deleteHabit(id) {
-            if (!confirm("Delete?")) return;
-            await supabaseClient.from('habits').delete().eq('id', id);
-            fetchHabits();
-        }
-
-        fetchHabits();
-
-        function toggleTheme() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.theme = 'light';
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.theme = 'dark';
-            }
-        }
-
-        // Dev Notes Functions (only for localhost)
-        function toggleDevNotes() {
-            document.getElementById('devNotesPanel').classList.toggle('open');
-        }
-
-        function openDevNoteModal() {
-            document.getElementById('devNotesModal').classList.add('open');
-            document.getElementById('noteInput').focus();
-            lucide.createIcons();
-        }
-
-        function closeDevNoteModal() {
-            document.getElementById('devNotesModal').classList.remove('open');
-            document.getElementById('noteInput').value = '';
         }
 
         async function saveDevNote() {
-            const text = document.getElementById('noteInput').value.trim();
+            const text = document.getElementById('noteInput').value;
             const type = document.getElementById('noteType').value;
             if (!text) return;
 
-            const page = window.location.pathname.split('/').pop() || 'index.html';
-            const entry = {
+            await supabaseClient.from('dev_notes').insert([{
                 text,
                 type,
-                page,
+                page: 'iOSv1',
                 timestamp: new Date().toISOString()
-            };
+            }]);
 
-            await supabaseClient.from('dev_notes').insert([entry]);
-            closeDevNoteModal();
+            document.getElementById('noteInput').value = '';
+            closeSheet('sheet-note');
             fetchDevNotes();
         }
 
-        async function fetchDevNotes() {
-            const { data, error } = await supabaseClient
-                .from('dev_notes')
-                .select('*')
-                .order('timestamp', { ascending: false });
-
-            if (!error && data) {
-                renderDevNotes(data);
-            }
-        }
-
-        function renderDevNotes(notes) {
-            const container = document.getElementById('devNotesContainer');
-            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
-
-            container.innerHTML = notes.map(note => `
-                <div class="dev-note-item">
-                    <div class="flex justify-between items-start mb-1">
-                        <span class="text-xs font-semibold text-amber-600 dark:text-amber-500">${typeEmoji[note.type]} ${note.type.toUpperCase()}</span>
-                        <button onclick="deleteDevNote('${note.id}')" class="text-gray-300 hover:text-red-500 text-xs">
-                            <i data-lucide="trash-2" class="w-3 h-3"></i>
-                        </button>
-                    </div>
-                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-1 dev-note-content">${escapeHtml(note.text)}</p>
-                    <div class="flex gap-2 text-xs text-gray-400">
-                        <span>${note.page}</span>
-                        <span>•</span>
-                        <span>${new Date(note.timestamp).toLocaleString()}</span>
-                    </div>
-                </div>
-            `).join('');
-            lucide.createIcons();
-        }
-
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-
-        async function deleteDevNote(id) {
+        async function deleteNote(id) {
+            if (!confirm('Delete note?')) return;
             await supabaseClient.from('dev_notes').delete().eq('id', id);
             fetchDevNotes();
         }
 
         async function copyAllNotes() {
-            const { data, error } = await supabaseClient
-                .from('dev_notes')
-                .select('*')
-                .order('timestamp', { ascending: false });
-
-            if (error || !data || data.length === 0) {
-                alert('No notes to copy');
-                return;
-            }
-
-            const typeEmoji = { bug: '🐛', feature: '✨', note: '📝' };
-            const formatted = data.map(note => {
-                const date = new Date(note.timestamp).toLocaleString();
-                return `${typeEmoji[note.type]} **${note.type.toUpperCase()}** [${note.page}] - ${date}\n${note.text}\n`;
-            }).join('\n---\n\n');
-
-            const fullText = `# Dev Notes (${data.length} total)\n\n${formatted}`;
-
-            try {
-                await navigator.clipboard.writeText(fullText);
-                alert(`Copied ${data.length} notes to clipboard! Paste them in your message to Claude.`);
-            } catch (err) {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy. Please try again.');
-            }
+            const { data } = await supabaseClient.from('dev_notes').select('*');
+            if (!data) return;
+            const text = data.map(n => `[${n.type.toUpperCase()}] ${n.text}`).join('\n\n');
+            navigator.clipboard.writeText(text);
+            alert('Copied to clipboard');
         }
 
-        // Show dev notes button only on localhost
-        if (isLocalhost) {
-            document.getElementById('devNotesBtn').style.display = 'flex';
-            fetchDevNotes();
+        // Settings Logic
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            const isDark = document.documentElement.classList.contains('dark');
+            localStorage.theme = isDark ? 'dark' : 'light';
         }
+
+        // Init
+        fetchHabits();
+        lucide.createIcons();
     </script>
 </body>
 
